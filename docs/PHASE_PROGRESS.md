@@ -31,3 +31,9 @@ A Vercel temporary-deployment attempt failed because a stale .next/export-detail
 ## Private environment tracing
 
 Excluded local .env files from Next.js output file tracing so Vercel functions rely on runtime environment variables rather than inaccessible local files. TypeScript, ESLint, 35 tests and build pass. Function traces contain no local environment files.
+
+## Vercel demo published
+
+Vercel reports the deployment READY at https://temporary-agile-rowan-35pfzxh.vercel.app. This temporary deployment expires on 2026-10-09 at 13:00:41 UTC (18:30:41 IST) unless claimed by its owner. The claim credential is shared privately and excluded from this repository.
+
+Deployed from a clean snapshot of tracked source with environment files omitted. Demo configuration is provided through Vercel environment variables. This avoids the builder independently packaging local environment files. No Supabase production database is connected; scope remains the foundation and classroom finder documented above.
