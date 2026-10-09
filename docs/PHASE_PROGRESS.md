@@ -9,3 +9,11 @@ Checks: TypeScript, ESLint, 27 Vitest tests, Next production build passed. HTTP 
 Dependencies: Next.js 14 is retained as explicitly requested, but npm audit reports known critical advisories. Production deployment requires upgrading to a patched supported major and revalidation; details in SECURITY.md. Vercel and Supabase deployment credentials are not available in this session.
 
 Remaining phases: 2–11 have not been completed. The previous Python prototype is kept for history but is not used by Next.js.
+
+## Phase 2 — shared availability and classroom finder slice
+
+Implemented lib/availability.ts, authenticated room search, date/time/capacity/building/working-facility filters, occupancy status cards, cancellation/override layering and common checks for room/faculty/section conflicts. The sample finder has 650 uniquely numbered rooms and illustrative occupancy. Real-mode queries use Supabase room_occupancy and classroom_resources.
+
+All four checks pass; 35 unit tests total. HTTP smoke checks cover unauthorized access, all 650 rooms, combined free/capacity/facility filtering, finder rendering and invalid calendar dates.
+
+This is a completed availability feature, not the whole phase. Admin CRUD, timetable import/manual editing/publishing and weekly views are still pending. No later phase is marked complete. Live query verification and transactional workflow development require a configured Supabase test database.

@@ -4,7 +4,7 @@ A college hackathon project with five portals and a fixed timetable plus one-tim
 
 ## Current build: Phase 1
 
-Next.js 14 App Router, TypeScript, Tailwind, shadcn-style Button, Supabase Auth/database setup, Framer Motion and a lazy React Three Fiber campus hero. Five role login selections, server authorization, roll-number mapping, department confirmation, SQL schema/RLS and a 650-room sample generator are implemented. Later workflows are not complete. See docs/PHASE_PROGRESS.md.
+Next.js 14 App Router, TypeScript, Tailwind, shadcn-style Button, Supabase Auth/database setup, Framer Motion and a lazy React Three Fiber campus hero. Five role login selections, server authorization, roll-number mapping, department confirmation, SQL schema/RLS and a 650-room sample generator are implemented. The first Phase 2 slice adds a date/time classroom finder backed by one tested availability module. Timetable editing, approvals and later workflows are not complete. See docs/PHASE_PROGRESS.md.
 
 Frontend: frontend/app and frontend/components. API route adapters delegate to backend/. Shared typed modules live in lib/. SQL and seeds live in db/.
 
