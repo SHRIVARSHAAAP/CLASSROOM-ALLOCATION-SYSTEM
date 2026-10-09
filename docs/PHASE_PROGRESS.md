@@ -27,3 +27,7 @@ Deployment checks: TypeScript, ESLint, all 35 Vitest tests and Next.js productio
 ## Vercel packaging fix
 
 A Vercel temporary-deployment attempt failed because a stale .next/export-detail.json marker classified a successful server build as a failed static export. The build wrapper now removes that marker only after Next.js exits successfully and only when the server manifest is not output: export. TypeScript, ESLint, 35 tests and the wrapped production build pass. Generated deployment folders are excluded from Git and uploads.
+
+## Private environment tracing
+
+Excluded local .env files from Next.js output file tracing so Vercel functions rely on runtime environment variables rather than inaccessible local files. TypeScript, ESLint, 35 tests and build pass. Function traces contain no local environment files.
