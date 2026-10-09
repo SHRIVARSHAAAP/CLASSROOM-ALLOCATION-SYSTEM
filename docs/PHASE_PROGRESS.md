@@ -23,3 +23,7 @@ This is a completed availability feature, not the whole phase. Admin CRUD, timet
 Added repository-root Next.js route adapters and vercel.json for standard Vercel detection. Upgraded Next.js to 15.5.27, made cookie access asynchronous, updated Supabase and patched transitive PostCSS/UUID. Secrets remain in ignored environment files and are excluded from deployment uploads. Publishing awaits Vercel device sign-in; no deployment URL is recorded until publication succeeds.
 
 Deployment checks: TypeScript, ESLint, all 35 Vitest tests and Next.js production build pass. Production npm audit reports zero vulnerabilities. HTTP smoke checks pass for every demo role, 650-room queries, student department confirmation and logout. ExcelJS round-trip passes after the UUID override.
+
+## Vercel packaging fix
+
+A Vercel temporary-deployment attempt failed because a stale .next/export-detail.json marker classified a successful server build as a failed static export. The build wrapper now removes that marker only after Next.js exits successfully and only when the server manifest is not output: export. TypeScript, ESLint, 35 tests and the wrapped production build pass. Generated deployment folders are excluded from Git and uploads.

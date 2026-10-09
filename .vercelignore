@@ -7,3 +7,6 @@ frontend/.env.*
 *.sqlite3
 __pycache__
 .git
+
+.next/**
+frontend/.next/**
