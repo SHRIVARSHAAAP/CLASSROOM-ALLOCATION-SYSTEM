@@ -1,23 +1,107 @@
-import { z } from "zod";
-const time=z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-export const slotSchema=z.object({date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s=>{const d=new Date(s+"T00:00:00Z");return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===s;},"Invalid calendar date"),start:time,end:time}).refine(s=>s.end>s.start,"End must be after start");
-export type Slot=z.infer<typeof slotSchema>;
-export interface Occupancy {id:string;roomId:string;date:string;start:string;end:string;kind:"regular"|"makeup"|"club"|"maintenance";facultyId?:string;sectionId?:string;}
-export interface RecurringSession {id:string;roomId:string;facultyId:string;sectionId:string;day:number;start:string;end:string;effectiveFrom:string;effectiveTo:string;}
-export interface OccurrenceOverride {sessionId:string;date:string;status:"scheduled"|"cancelled"|"rescheduled"|"room_changed";roomId?:string;}
-export function overlaps(a:Pick<Slot,"start"|"end">,b:Pick<Slot,"start"|"end">){return a.start<b.end&&b.start<a.end;}
-export function effectiveOccupancy(date:string,sessions:RecurringSession[],overrides:OccurrenceOverride[],extras:Occupancy[]):Occupancy[]{
- const validated=slotSchema.parse({date,start:"00:00",end:"23:59"});
- const day=new Date(validated.date+"T12:00:00Z").getUTCDay();
- const lookup=new Map(overrides.filter(o=>o.date===date).map(o=>[o.sessionId,o]));
- return [...sessions.filter(s=>s.day===day&&s.effectiveFrom<=date&&s.effectiveTo>=date).flatMap(s=>{const o=lookup.get(s.id);if(o?.status==="cancelled"||o?.status==="rescheduled")return [];return [{id:s.id,roomId:o?.roomId??s.roomId,date,start:s.start,end:s.end,kind:"regular" as const,facultyId:s.facultyId,sectionId:s.sectionId}];}),...extras.filter(s=>s.date===date)];
+import {
+  slotSchema,
+  type Extra,
+  type Room,
+  type Slot,
+  type State,
+} from "./types";
+export function overlap(
+  a: Pick<Slot, "start" | "end">,
+  b: Pick<Slot, "start" | "end">,
+): boolean {
+  return a.start < b.end && b.start < a.end;
 }
-export function conflicts(slot:Slot,occupancy:Occupancy[],filter:{roomId?:string;facultyId?:string;sectionId?:string;excludeId?:string}):Occupancy[]{
- slotSchema.parse(slot);
- return occupancy.filter(o=>o.id!==filter.excludeId&&o.date===slot.date&&overlaps(slot,o)&&((filter.roomId&&o.roomId===filter.roomId)||(filter.facultyId&&o.facultyId===filter.facultyId)||(filter.sectionId&&o.sectionId===filter.sectionId)));
+export function occupancy(state: State, date: string): Extra[] {
+  slotSchema.parse({ date, start: "00:00", end: "23:59" });
+  const day = new Date(date + "T12:00:00Z").getUTCDay();
+  const recurring: Extra[] = state.sessions
+    .filter((s) => s.day === day)
+    .flatMap((session) => {
+      const change = state.overrides.find(
+        (o) => o.sessionId === session.id && o.date === date,
+      );
+      if (change?.cancelled) return [];
+      return [
+        {
+          id: session.id,
+          date,
+          start: session.start,
+          end: session.end,
+          roomId: change?.roomId ?? session.roomId,
+          kind: "regular" as const,
+          section: session.section,
+          facultyId: session.facultyId,
+          title: `${session.subject} · ${session.section}`,
+        },
+      ];
+    });
+  const clubs = state.bookings
+    .filter((b) => b.status === "approved" && b.date === date)
+    .map((b) => ({
+      id: b.id,
+      date,
+      start: b.start,
+      end: b.end,
+      roomId: b.roomId,
+      kind: "club" as const,
+      title: b.event,
+    }));
+  return [
+    ...recurring,
+    ...state.extras.filter((e) => e.date === date),
+    ...clubs,
+  ];
 }
-export function roomStatus(roomId:string,slot:Slot,occupancy:Occupancy[],active=true,maintenance=false):"inactive"|"free"|Occupancy["kind"]{
- if(!active)return "inactive";if(maintenance)return "maintenance";
- const matches=conflicts(slot,occupancy,{roomId});
- return (["maintenance","club","makeup","regular"] as const).find(kind=>matches.some(o=>o.kind===kind))??"free";
+export function blockers(
+  state: State,
+  slot: Slot,
+  target: {
+    roomId?: string;
+    facultyId?: string;
+    section?: string;
+    exclude?: string;
+  },
+): Extra[] {
+  slotSchema.parse(slot);
+  return occupancy(state, slot.date).filter(
+    (event) =>
+      event.id !== target.exclude &&
+      overlap(slot, event) &&
+      (event.roomId === target.roomId ||
+        (target.facultyId && event.facultyId === target.facultyId) ||
+        (target.section && event.section === target.section)),
+  );
+}
+export function availability(
+  state: State,
+  room: Room,
+  slot: Slot,
+): { free: boolean; reason: string; label: "Available" | "Not available" } {
+  if (!room.active)
+    return { free: false, label: "Not available", reason: "Inactive room" };
+  const occupied = blockers(state, slot, { roomId: room.id });
+  if (occupied.length) {
+    const item = occupied[0];
+    const regular = state.sessions.some((s) => s.id === item.id);
+    return {
+      free: false,
+      label: "Not available",
+      reason: `${regular ? "Regular class" : item.kind === "club" ? "Approved club booking" : item.kind === "maintenance" ? "Maintenance" : "Makeup"} · ${item.title}`,
+    };
+  }
+  const released = state.overrides.some(
+    (o) =>
+      o.date === slot.date &&
+      o.cancelled &&
+      state.sessions.some(
+        (s) => s.id === o.sessionId && s.roomId === room.id && overlap(slot, s),
+      ),
+  );
+  return {
+    free: true,
+    label: "Available",
+    reason: released
+      ? "Class cancelled, room released"
+      : "Free for the full selected period",
+  };
 }

@@ -1,12 +1,7 @@
 node_modules
 .next
-frontend/.next
-.env
-.env.*
-frontend/.env.*
-*.sqlite3
-__pycache__
 .git
-
-.next/**
-frontend/.next/**
+.vercel
+.env*
+docs/screenshots
+tests

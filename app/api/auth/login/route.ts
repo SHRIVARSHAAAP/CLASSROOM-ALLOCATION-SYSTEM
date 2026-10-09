@@ -1,2 +1,1 @@
-export const dynamic="force-dynamic";
-export { POST } from "../../../../frontend/app/api/auth/login/route";
+export { login as POST } from "@/backend/login";

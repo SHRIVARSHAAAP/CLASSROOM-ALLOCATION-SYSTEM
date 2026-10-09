@@ -1,0 +1,170 @@
+Prompt 0: Project brief
+Build the "Smart Campus Room Management System" for PSG College of Technology.
+Stack: Next.js 15 (App Router), TypeScript, Tailwind, Supabase (Auth + Postgres +
+private Storage), zod, Recharts, pdf-lib, Vitest. Five portals: Admin, Class Rep,
+Club Member, Faculty, Student.
+Core rules:
+- The fixed weekly timetable is never edited by one-time changes. Cancellations,
+  room changes, makeups and club bookings are stored as separate dated records.
+- ONE shared availability module (lib/availability.ts) is used by every feature.
+- Rooms are shown GREEN "Available" or RED "Not available", always with a text
+  label, never colour alone.
+- Theme: navy #1B3A82, text #1B2F6E, teal #0E7C7B, slate-blue #4A6A9E.
+  Fonts: Poppins (login), DM Sans (app). Light/dark mode, mobile first, accessible.
+- Readable, formatted code (no one-liners). Pure logic in /lib and /lib/engine.
+  Add Vitest tests for logic. Never expose the service-role key to the browser.
+Confirm, then wait for my next prompt.
+Prompt 1: Database and seed
+Write the Supabase SQL: users (role, department, section, roll_number, email,
+is_active, club_permission, whatsapp fields), buildings (A, B, C, D, E, F, G, I, J,
+K, M, T, Y), classrooms, resources/classroom_resources (working quantity),
+class_sections, timetable_versions, timetable_sessions (recurring),
+session_occurrences (one-day overrides), makeup_sessions, cancellation_reports
+(with reason), classroom_issues, rep_permissions (single-use, session-bound,
+expiry), club_bookings (reference CLUB-YYYY-NNNN, status, letter path),
+maintenance_blocks, notifications, audit_logs (immutable), login_attempts, and a
+room_occupancy view combining classes, makeups, approved clubs and maintenance.
+Add exclusion constraints against double-booking and row-level security (no direct
+client writes). Seed 13 blocks, 650 sample rooms and one test user per role.
+Prompt 2: Login (PSG style)
+Build the login pages in the PSG style. Two columns on a white background.
+LEFT (hidden on mobile): campus illustration on a blue ellipse with soft gradient
+circles in the corners.
+RIGHT (max-width 440px): /public/logo.svg, "PSG College of Technology",
+"Smart Campus Room Management", heading "<Role> Login".
+- Underline-style inputs with icons. Student: "Roll no" + Password. Other roles:
+  "Email" + Password. Show/hide eye toggle. Real labels and autocomplete attributes.
+- "Forgot Password?" (Supabase reset by email; students resolve email from roll number).
+- Red note: account locks after 5 consecutive incorrect attempts. Enforce it in the
+  database (15-minute lock) and show a clear message.
+- Checkbox "I Agree to the Terms & Conditions" must be ticked to enable Login.
+- Navy Login button with loading state, "---- OR ----", and dashed buttons for the
+  other portals that switch the title, fields and route (/login/student, /faculty,
+  /rep, /club, /admin) without a full reload.
+Rules: no public sign-up (admin creates accounts), the role must match the portal,
+generic error "Incorrect roll number/email or password", zod validation,
+HttpOnly session cookies WITH refresh-token handling, anon client for sign-in
+(service key server-only), middleware route protection, server-side role checks,
+tests for wrong password, wrong role, deactivated user and cross-role routes.
+Prompt 3: App shell and dashboards
+Build the layout for each role with a sidebar, header, theme toggle, notification
+bell and sign out. Pages per role:
+Admin: Dashboard, Classrooms, Fixed Timetable, Cancellations, Issues, Rescheduling,
+Rep Permissions, Club Bookings, Campus Map, Reports, Notifications.
+Rep: Dashboard, My Timetable, Report Cancellation, Report Issue, Request Permission,
+Change Classroom, My Requests, Notifications.
+Club: Dashboard, Classroom Finder, Booking Request, Generate HOD Letter, Upload Signed
+Letter, My Bookings, Notifications.
+Faculty: Dashboard, My Schedule, Classroom Details, Notifications.
+Student: Dashboard, My Timetable, Classroom Finder, Notifications.
+Add empty/loading/error states. Admin dashboard cards: total/free classrooms, today's
+scheduled/cancelled classes, pending cancellations, issues, permissions and club
+approvals, recent changes, notification delivery status.
+Prompt 4: Classroom management (Admin)
+Admin CRUD for classrooms: block, floor, room number, capacity, type, and facilities
+with working quantities (projector, computers, AC, smart board, lab equipment).
+Deactivate rooms, create maintenance blocks, search and filter, free/occupied view.
+Validate with zod and write audit logs.
+Prompt 5: Interactive campus map
+Build a reusable <CampusMap> component using /public/campus-map.jpg (1287x882).
+Overlay clickable hotspot buttons for blocks A, B, C, D, E, F, G, I, J, K, M, T, Y
+positioned in percentages (store { block, xPercent, yPercent } in lib/mapHotspots.ts).
+Start from these pixel positions on the image and let me fine-tune them: A(135,540)
+B(68,415) C(410,608) D(520,465) E(1022,360) F(750,285) G(645,298) I(490,250)
+J(1100,168) K(1165,268) M(1262,245) T(935,265) Y(350,390).
+- Date, start and end time pickers above the map (default: now, IST).
+- Clicking a block highlights it and opens a side panel of that block's rooms.
+- Room cards: GREEN "Available" or RED "Not available" for the full chosen period,
+  with the reason on red (regular class with section and subject, makeup, club booking,
+  maintenance, inactive). A room whose class was cancelled is green with
+  "Class cancelled, room released".
+- Counts per block, filters for floor, seats and facility. Keyboard accessible
+  with aria-labels. Mobile: map above, rooms below.
+- A compact read-only mode that highlights one block (for student and faculty).
+All statuses come from lib/availability.ts.
+Prompt 6: Timetable import and availability
+Admin uploads CSV/Excel timetables (department, year, section, subject, faculty, day,
+time, room). Show a preview, validate rows, and detect conflicts (room, faculty,
+section) before publishing. Show room-wise weekly timetables. Build
+lib/availability.ts as the single source of truth (recurring sessions + occurrence
+overrides + makeups + approved clubs + maintenance) and the Classroom Finder
+(date, time, seats, block, floor, facilities). Publishing never overwrites the
+recurring timetable. Add tests for overlaps and overrides.
+Prompt 7: Cancellations and issues
+Rep: report a cancellation (session + reason) and classroom issues (type, description,
+optional image to private storage). Admin: approve or reject; approval marks only that
+date's occurrence as cancelled and releases the room for that date. Then display a
+"Class cancelled" card to the rep, faculty and affected students with: subject,
+section, faculty, date, time, room, the REASON, who reported and approved it, and
+the status. The room turns green on the map for that slot. Admin can mark rooms
+unavailable, suggest alternatives and track issue resolution. Add history, audit logs
+and notifications.
+Prompt 8: Allocation engine and automatic reschedule suggestions
+Build /lib/engine. Hard constraints: faculty free, section free, room free, capacity >=
+section size, required facilities, room not in maintenance. Soft score: seat fit, same
+or preferred block, walking distance between the section's neighbouring classes,
+avoiding the section's heavy days, minimal gap from the original time, and avoiding
+scarce-room misuse. Build a first-fit baseline and an optimized allocator.
+AUTOMATIC SUGGESTIONS: when a cancellation is approved and a makeup is required,
+run the engine immediately for the next 14 college days (skip holidays) using the
+faculty timetable, the section timetable, club bookings, maintenance, existing makeups
+and room availability. Show the top 3 ranked slots to the Admin, each with the room and
+a checklist (faculty free, section free, room free, capacity fits) and a short reason.
+Admin confirms one (transactional re-check against double-booking). That publishes the
+makeup, notifies the rep, faculty and students, and turns that room red for the
+new slot on the map. If nothing fits, explain which constraint failed. Re-allocate only
+affected classes when availability changes and measure how many moved. Tests: faculty
+clash, section clash, room clash, capacity, and beating the baseline.
+Prompt 9: Rep permission and change classroom (with map)
+Rep requests permission for one session with a reason. Admin approves with an expiry,
+rejects, or revokes. Approved permission is single-use and tied to that session. Rep
+"Change classroom" page uses <CampusMap>: click a block, see green/red rooms for the
+session's time, select a green room, run automatic checks (faculty free, section free,
+room free, capacity and facilities fit), save. Saving consumes the permission and
+updates the published timetable. Too-small or ill-equipped rooms show red with the
+reason. Log everything and notify admin, rep and faculty.
+Prompt 10: Club booking and HOD letter
+Club booking uses <CampusMap> and the Classroom Finder to choose a room. Form: club,
+organizer name and department, faculty coordinator, event name and purpose, date,
+start and end, expected participants, required facilities, preferred room. Check
+suitability and availability before continuing. Generate a unique reference
+CLUB-YYYY-NNNN safely in the database. Generate an A4 PDF permission letter with
+pdf-lib (college and department, club and event, organizer, room, date/time,
+participants, purpose, coordinator, space for HOD signature, date and seal).
+Status flow: Draft, Awaiting HOD Signature, Signed Letter Submitted, Approved, Rejected,
+Cancelled. "My Bookings" page with re-download, status and cancel.
+Prompt 11: Signed letter and admin approval (with map)
+Club member uploads the signed letter (image or PDF, size and type limits, private
+bucket). Admin "Room changes and bookings" page shows <CampusMap> beside the pending
+request: reference, club, event, room, time, participants, and checks (room free,
+capacity fits, facilities fit, letter received). Admin views the letter, approval
+re-checks availability in a transaction, then approves or rejects. Approved bookings
+feed lib/availability.ts so the room turns red for others. Admin can modify or cancel
+approved bookings, with notification.
+Prompt 12: Student and faculty portals
+Student: fixed timetable, today's classes with room, block and floor, badges (on time,
+cancelled with reason, room changed, makeup confirmed), classroom search, and a
+compact read-only map highlighting the block of the next class.
+Faculty (read-only): today's classes, rooms, upcoming sessions, cancellations with
+reasons, confirmed makeups, updated locations, and the same compact map.
+Students with club permission get a portal switcher.
+Prompt 13: Notifications
+In-app notifications for every event in my spec (cancellation reports, issue reports,
+permission requests and decisions, cancellation and reschedule confirmations, room
+changes, signed letter uploads, club approvals, modifications). Always available on the
+website. WhatsApp Business Cloud API behind a provider interface, in mock mode
+first, with consent checks, approved templates, delivery status tracking, and fallback
+to website notifications on failure. Admin delivery-status panel.
+Prompt 14: Reports and audit logs
+Admin reports: room utilization, cancellations and reschedules, unresolved cases, room
+change history, issue frequency, club approvals and rejections, occupancy, and
+allocation efficiency vs the baseline (utilization, wasted seats, preference match,
+stability). Charts, date filters and CSV export. Audit-log viewer (who, what, when,
+before and after).
+Prompt 15: Polish, tests and deploy
+Run Prettier, ESLint, typecheck and tests, and fix everything. Add loading, empty and
+error states, accessibility checks (labels, focus, 4.5:1 contrast), a landing page, an
+"Explain the algorithm" page, a README, a 3-minute demo script (login, map click,
+cancellation with reason, auto suggestions, rep room change, club booking) and Vercel
+deployment steps. Include a checklist: disable demo mode, set real env vars,
+and confirm the service-role key is server-only.

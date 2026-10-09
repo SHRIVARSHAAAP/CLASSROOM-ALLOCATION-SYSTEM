@@ -1,71 +1,107 @@
--- Smart Campus schema. Run once on a new Supabase project.
+-- Fresh Supabase schema. Apply in a new project, then connect server workflow APIs.
+-- The public preview uses explicit browser sample records; these tables are not live yet.
 create extension if not exists pgcrypto;
 create extension if not exists btree_gist;
-create table buildings(id text primary key, name text not null, x numeric check(x between 0 and 1), y numeric check(y between 0 and 1), has_rooms boolean not null default true);
-create table departments(id text primary key, name text unique not null, home_building_id text references buildings(id));
-create table class_sections(id text primary key,department_id text not null references departments(id),year int not null check(year between 1 and 6),name text not null);
-create table users(id uuid primary key references auth.users(id),name text not null,email text unique not null,role text not null check(role in ('admin','rep','club_member','faculty','student')),permissions text[] not null default '{}',phone text,whatsapp_consent boolean not null default false,whatsapp_consent_at timestamptz,department_id text references departments(id),department_confirmed boolean not null default false,roll_number text unique,section_id text references class_sections(id));
-create table students(user_id uuid primary key references users(id),roll_number text unique not null,department_id text references departments(id),year int not null,section_id text references class_sections(id),address text,guardian_name text);
-create table faculty(user_id uuid primary key references users(id),cabin_location text);
-create table reps(user_id uuid primary key references users(id),section_id text not null references class_sections(id));
-create table club_profiles(user_id uuid primary key references users(id),club_name text not null,department_id text references departments(id));
-create table classrooms(id uuid primary key default gen_random_uuid(),building_id text not null references buildings(id),floor int not null check(floor>=0),room_number text unique not null,capacity int not null check(capacity>0),seat_rows int not null check(seat_rows>0),seat_cols int not null check(seat_cols>0),room_type text not null check(room_type in ('lecture','lab','computer_lab','seminar','auditorium')),is_active boolean not null default true,status text not null default 'active' check(status in ('active','maintenance')));
-create table resources(id text primary key,name text unique not null);
-create table classroom_resources(classroom_id uuid references classrooms(id),resource_id text references resources(id),quantity_available int not null check(quantity_available>=0),quantity_working int not null check(quantity_working>=0 and quantity_working<=quantity_available),primary key(classroom_id,resource_id));
-create table timetable_versions(id uuid primary key default gen_random_uuid(),name text not null,status text not null check(status in ('draft','published')),effective_from date not null,effective_to date not null check(effective_to>=effective_from));
-create unique index one_published_timetable on timetable_versions(status) where status='published';
-create table timetable_sessions(id uuid primary key default gen_random_uuid(),version_id uuid not null references timetable_versions(id),section_id text not null references class_sections(id),faculty_id uuid not null references faculty(user_id),classroom_id uuid references classrooms(id),subject text not null,day_of_week int not null check(day_of_week between 0 and 6),start_time time not null,end_time time not null check(end_time>start_time),priority text not null default 'normal' check(priority in ('normal','high')),required_capacity int not null default 30 check(required_capacity>0),required_resources jsonb not null default '{}',room_type text not null default 'lecture');
-create index recurring_room_slot on timetable_sessions(classroom_id,day_of_week,start_time);
-create table session_occurrences(id uuid primary key default gen_random_uuid(),session_id uuid not null references timetable_sessions(id),occurrence_date date not null,status text not null default 'scheduled' check(status in ('scheduled','cancelled','rescheduled','room_changed')),classroom_override uuid references classrooms(id),makeup_required boolean not null default false,unique(session_id,occurrence_date));
-create table makeup_sessions(id uuid primary key default gen_random_uuid(),occurrence_id uuid not null unique references session_occurrences(id),section_id text not null references class_sections(id),faculty_id uuid not null references faculty(user_id),classroom_id uuid not null references classrooms(id),event_date date not null,start_time time not null,end_time time not null check(end_time>start_time),subject text not null);
-create table maintenance_blocks(id uuid primary key default gen_random_uuid(),classroom_id uuid not null references classrooms(id),event_date date not null,start_time time not null,end_time time not null check(end_time>start_time),reason text not null);
-create table cancellation_reports(id uuid primary key default gen_random_uuid(),occurrence_id uuid not null references session_occurrences(id),rep_id uuid not null references reps(user_id),reason text not null,status text not null default 'pending' check(status in ('pending','approved','rejected')),decision_reason text,created_at timestamptz not null default now());
-create table classroom_issues(id uuid primary key default gen_random_uuid(),classroom_id uuid not null references classrooms(id),occurrence_id uuid not null references session_occurrences(id),rep_id uuid not null references reps(user_id),type text not null,description text not null,image_url text,status text not null default 'pending' check(status in ('pending','acknowledged','resolved','rejected')),created_at timestamptz default now());
-create table rep_permissions(id uuid primary key default gen_random_uuid(),rep_id uuid not null references reps(user_id),occurrence_id uuid not null references session_occurrences(id),reason text not null,status text not null default 'pending' check(status in ('pending','approved','rejected','expired','used','revoked')),expires_at timestamptz,used_at timestamptz,created_at timestamptz not null default now());
-create table room_change_log(id uuid primary key default gen_random_uuid(),occurrence_id uuid not null references session_occurrences(id),permission_id uuid unique references rep_permissions(id),old_classroom_id uuid references classrooms(id),new_classroom_id uuid not null references classrooms(id),actor_id uuid not null references users(id),created_at timestamptz not null default now());
-create table hod_consents(id uuid primary key default gen_random_uuid(),occurrence_id uuid not null references session_occurrences(id),status text not null default 'pending' check(status in ('pending','accepted','declined')),reason text not null,decision_note text,compromise jsonb,actor_id uuid references users(id),created_at timestamptz not null default now());
-create table booking_counters(year int primary key,value int not null check(value>0));
-create function next_booking_reference() returns text language plpgsql security definer set search_path=public as $$declare yr int:=extract(year from now() at time zone 'Asia/Kolkata');n int;begin insert into booking_counters values(yr,1) on conflict(year) do update set value=booking_counters.value+1 returning value into n;return 'CLUB-'||yr||'-'||lpad(n::text,greatest(4,length(n::text)),'0');end$$;
-create table club_bookings(id uuid primary key default gen_random_uuid(),reference_no text unique not null default next_booking_reference(),organizer_id uuid not null references users(id),club text not null,organizer text not null,department_id text references departments(id),faculty_coordinator uuid references faculty(user_id),event text not null,purpose text not null,event_date date not null,start_time time not null,end_time time not null check(end_time>start_time),participants int not null check(participants>0),resources jsonb not null default '{}',classroom_id uuid not null references classrooms(id),status text not null default 'draft' check(status in ('draft','awaiting_hod_signature','signed_letter_submitted','approved','rejected','cancelled')),letter_pdf_url text,signed_letter_url text,decision_reason text,created_at timestamptz not null default now());
-create index booking_room_slot on club_bookings(classroom_id,event_date,start_time);
--- A transactional reservation ledger is populated by approval/publish RPCs.
--- Exclusion constraints protect every room, faculty and section against races.
-create table occupancy_reservations(id uuid primary key default gen_random_uuid(),source_kind text not null,source_id uuid not null,classroom_id uuid not null references classrooms(id),faculty_id uuid references faculty(user_id),section_id text references class_sections(id),slot tsrange not null,unique(source_kind,source_id),exclude using gist(classroom_id with =,slot with &&),exclude using gist(faculty_id with =,slot with &&) where(faculty_id is not null),exclude using gist(section_id with =,slot with &&) where(section_id is not null));
-create table notifications(id uuid primary key default gen_random_uuid(),user_id uuid not null references users(id),event text not null,title text not null,body text not null,read_at timestamptz,created_at timestamptz not null default now());
-create table whatsapp_deliveries(id uuid primary key default gen_random_uuid(),notification_id uuid not null references notifications(id),user_id uuid not null references users(id),status text not null default 'queued' check(status in ('queued','sent','delivered','read','failed','skipped_no_consent')),mode text not null default 'mock' check(mode in ('mock','live')),provider_id text,error text,attempts int not null default 0,created_at timestamptz not null default now());
-create table audit_logs(id bigint generated always as identity primary key,actor_id uuid references users(id),action text not null,entity text not null,entity_id text,before jsonb,after jsonb,created_at timestamptz not null default now());
-create function forbid_audit_change() returns trigger language plpgsql as $$begin raise exception 'Audit logs are append-only';end$$;
-create trigger audit_immutable before update or delete on audit_logs for each row execute function forbid_audit_change();
-create table student_section_enrollments(student_id uuid references students(user_id),section_id text references class_sections(id),primary key(student_id,section_id));
-create table subject_enrollments(student_id uuid references students(user_id),subject text not null,batch text,primary key(student_id,subject));
-create table attendance_submissions(id uuid primary key default gen_random_uuid(),session_id uuid references timetable_sessions(id),makeup_id uuid references makeup_sessions(id),event_date date not null,faculty_id uuid not null references faculty(user_id),locked boolean not null default true,submitted_at timestamptz not null default now(),check((session_id is null)<>(makeup_id is null)));
-create unique index attendance_regular_unique on attendance_submissions(session_id,event_date) where session_id is not null;
-create unique index attendance_makeup_unique on attendance_submissions(makeup_id) where makeup_id is not null;
-create table attendance_records(id uuid primary key default gen_random_uuid(),submission_id uuid not null references attendance_submissions(id),student_id uuid not null references students(user_id),status text not null check(status in ('present','absent','late','on_duty','excused')),edit_reason text,unique(submission_id,student_id));
-create table floor_plans(id uuid primary key default gen_random_uuid(),building_id text not null references buildings(id),floor int not null,image_url text,width int not null default 1000,height int not null default 600,unique(building_id,floor));
-create table room_shapes(classroom_id uuid primary key references classrooms(id),floor_plan_id uuid not null references floor_plans(id),x numeric not null check(x between 0 and 1),y numeric not null check(y between 0 and 1),width numeric not null check(width>0 and width<=1),height numeric not null check(height>0 and height<=1),check(x+width<=1 and y+height<=1));
-create table map_nodes(id uuid primary key default gen_random_uuid(),label text,kind text not null,building_id text references buildings(id),floor int,x numeric not null check(x between 0 and 1),y numeric not null check(y between 0 and 1));
-create table map_edges(id uuid primary key default gen_random_uuid(),from_node uuid not null references map_nodes(id),to_node uuid not null references map_nodes(id),meters numeric not null check(meters>0),accessible boolean not null default true,unique(from_node,to_node));
-create table section_home_rooms(section_id text primary key references class_sections(id),classroom_id uuid not null references classrooms(id));
-create table department_home_buildings(department_id text primary key references departments(id),building_id text not null references buildings(id));
-create table building_distances(from_building text references buildings(id),to_building text references buildings(id),meters numeric not null check(meters>=0),primary key(from_building,to_building));
-create table login_attempts(key text primary key,window_started timestamptz not null,attempts int not null);
-create function allow_login_attempt(attempt_key text) returns boolean language plpgsql security definer set search_path=public as $$declare n int;begin insert into login_attempts values(attempt_key,now(),1) on conflict(key) do update set attempts=case when login_attempts.window_started<now()-interval '15 minutes' then 1 else login_attempts.attempts+1 end,window_started=case when login_attempts.window_started<now()-interval '15 minutes' then now() else login_attempts.window_started end returning attempts into n;return n<=5;end$$;
-create function confirm_student_department(chosen_department text,consent boolean,actor_id uuid) returns void language plpgsql security definer set search_path=public as $$declare prior jsonb;begin select to_jsonb(u) into prior from users u where id=actor_id and role='student' and not department_confirmed for update;if prior is null then raise exception 'Not an unconfirmed student';end if;update users set department_id=chosen_department,department_confirmed=true,whatsapp_consent=consent,whatsapp_consent_at=case when consent then now() else null end where id=actor_id;update students set department_id=chosen_department where user_id=actor_id;insert into audit_logs(actor_id,action,entity,entity_id,before,after) values(actor_id,'department_confirmed','users',actor_id::text,prior,jsonb_build_object('department_id',chosen_department,'whatsapp_consent',consent));insert into notifications(user_id,event,title,body) values(actor_id,'department_confirmed','Department confirmed','Your department preference has been saved.');end$$;
--- Expand only the published timetable, and layer date-specific overrides on it.
-create view room_occupancy with (security_invoker=true) as
-select coalesce(o.classroom_override,s.classroom_id) classroom_id,d::date event_date,s.start_time,s.end_time,'regular'::text source_kind,s.id source_id,s.faculty_id,s.section_id
-from timetable_sessions s join timetable_versions v on v.id=s.version_id and v.status='published'
-cross join lateral generate_series(v.effective_from::timestamp,v.effective_to::timestamp,interval '1 day') d
-left join session_occurrences o on o.session_id=s.id and o.occurrence_date=d::date
-where extract(dow from d)=s.day_of_week and coalesce(o.status,'scheduled') not in ('cancelled','rescheduled')
-union all select classroom_id,event_date,start_time,end_time,'makeup',id,faculty_id,section_id from makeup_sessions
-union all select classroom_id,event_date,start_time,end_time,'club',id,null,null from club_bookings where status='approved'
-union all select classroom_id,event_date,start_time,end_time,'maintenance',id,null,null from maintenance_blocks;
-create index notifications_user_time on notifications(user_id,created_at desc);
-create index occurrences_session_date on session_occurrences(session_id,occurrence_date);
-create index audit_actor_time on audit_logs(actor_id,created_at desc);
-revoke all on function next_booking_reference() from public,anon,authenticated;
-revoke all on function allow_login_attempt(text) from public,anon,authenticated;
-revoke all on function confirm_student_department(text,boolean,uuid) from public,anon,authenticated;
-grant execute on function next_booking_reference(),allow_login_attempt(text),confirm_student_department(text,boolean,uuid) to service_role;
+
+create table departments(id text primary key, name text not null);
+create table buildings(id text primary key, name text not null);
+create table class_sections(id text primary key, department_id text references departments(id), year integer not null check(year between 1 and 6), section text not null, size integer not null check(size>0));
+create table users(
+ id uuid primary key references auth.users(id), name text not null, email text unique not null,
+ role text not null check(role in ('admin','rep','club','faculty','student')),
+ department_id text references departments(id), section_id text references class_sections(id),
+ roll_number text unique, is_active boolean not null default true, club_permission boolean not null default false,
+ phone text, whatsapp_consent boolean not null default false, whatsapp_consent_at timestamptz
+);
+create table classrooms(
+ id uuid primary key default gen_random_uuid(), building_id text not null references buildings(id),
+ floor integer not null check(floor>=0), room_number text unique not null, capacity integer not null check(capacity>0),
+ room_type text not null check(room_type in ('lecture','computer_lab','lab','seminar')), is_active boolean not null default true
+);
+create table resources(id text primary key, name text not null);
+create table classroom_resources(classroom_id uuid references classrooms(id), resource_id text references resources(id), quantity_available integer not null check(quantity_available>=0), quantity_working integer not null check(quantity_working>=0 and quantity_working<=quantity_available), primary key(classroom_id,resource_id));
+create table timetable_versions(id uuid primary key default gen_random_uuid(), status text not null default 'draft' check(status in ('draft','published','archived')), effective_from date not null, effective_to date not null check(effective_to>=effective_from), created_by uuid references users(id), created_at timestamptz not null default now());
+create table timetable_sessions(
+ id uuid primary key default gen_random_uuid(), version_id uuid not null references timetable_versions(id),
+ section_id text not null references class_sections(id), faculty_id uuid not null references users(id), classroom_id uuid not null references classrooms(id), subject text not null,
+ day_of_week integer not null check(day_of_week between 1 and 6), start_minute integer not null check(start_minute between 0 and 1439), end_minute integer not null check(end_minute between 1 and 1440 and end_minute>start_minute),
+ minute_range int4range generated always as (int4range(start_minute,end_minute,'[)')) stored,
+ exclude using gist(version_id with =,classroom_id with =,day_of_week with =,minute_range with &&),
+ exclude using gist(version_id with =,faculty_id with =,day_of_week with =,minute_range with &&),
+ exclude using gist(version_id with =,section_id with =,day_of_week with =,minute_range with &&)
+);
+create table session_occurrences(id uuid primary key default gen_random_uuid(), session_id uuid not null references timetable_sessions(id), event_date date not null, status text not null default 'scheduled' check(status in ('scheduled','cancelled','room_changed')), classroom_override uuid references classrooms(id), reason text, reported_by uuid references users(id), approved_by uuid references users(id), unique(session_id,event_date));
+create table makeup_sessions(id uuid primary key default gen_random_uuid(), occurrence_id uuid unique not null references session_occurrences(id), event_date date not null, start_time time not null, end_time time not null check(end_time>start_time), classroom_id uuid not null references classrooms(id), faculty_id uuid not null references users(id), section_id text not null references class_sections(id), subject text not null);
+create table cancellation_reports(id uuid primary key default gen_random_uuid(), occurrence_id uuid not null references session_occurrences(id), rep_id uuid not null references users(id), reason text not null check(length(reason)>=5), status text not null default 'pending' check(status in ('pending','approved','rejected')), decision_note text, makeup_required boolean not null default false, created_at timestamptz not null default now());
+create table classroom_issues(id uuid primary key default gen_random_uuid(), classroom_id uuid not null references classrooms(id), occurrence_id uuid references session_occurrences(id), rep_id uuid not null references users(id), type text not null, description text not null, image_path text, status text not null default 'pending' check(status in ('pending','approved','resolved','rejected')), created_at timestamptz not null default now());
+create table rep_permissions(id uuid primary key default gen_random_uuid(), rep_id uuid not null references users(id), occurrence_id uuid not null references session_occurrences(id), reason text not null, status text not null default 'pending' check(status in ('pending','approved','rejected','used','revoked')), expires_at timestamptz, used_at timestamptz, check(status<>'approved' or expires_at is not null));
+create table booking_counters(booking_year integer primary key, counter integer not null);
+create function next_club_reference() returns text language plpgsql security definer set search_path=public as $$
+declare yr integer:=extract(year from now()); n integer;
+begin
+ insert into booking_counters values(yr,1) on conflict(booking_year) do update set counter=booking_counters.counter+1 returning counter into n;
+ return 'CLUB-'||yr||'-'||lpad(n::text,4,'0');
+end$$;
+create table club_bookings(
+ id uuid primary key default gen_random_uuid(), reference text unique not null default next_club_reference(), organizer_id uuid not null references users(id), club text not null, organizer text not null, department text not null, coordinator text not null, event text not null, purpose text not null,
+ event_date date not null, start_time time not null, end_time time not null check(end_time>start_time), participants integer not null check(participants>0), required_resources jsonb not null default '{}', classroom_id uuid not null references classrooms(id),
+ status text not null default 'draft' check(status in ('draft','awaiting_hod_signature','signed_letter_submitted','approved','rejected','cancelled')), letter_path text, signed_letter_path text, decision_note text, created_at timestamptz not null default now()
+);
+create table maintenance_blocks(id uuid primary key default gen_random_uuid(), classroom_id uuid not null references classrooms(id), event_date date not null, start_time time not null, end_time time not null check(end_time>start_time), reason text not null);
+-- Materialized dated occupancy is the cross-source transaction guard. Publishing,
+-- approval and occurrence changes must synchronize this ledger in the same transaction.
+create table occupancy_ledger(
+ id uuid primary key default gen_random_uuid(), source_kind text not null check(source_kind in ('regular','makeup','club','maintenance')), source_id uuid not null, classroom_id uuid not null references classrooms(id), faculty_id uuid references users(id), section_id text references class_sections(id), event_date date not null,
+ starts_at timestamp not null, ends_at timestamp not null check(ends_at>starts_at),
+ slot tsrange generated always as (tsrange(starts_at,ends_at,'[)')) stored,
+ unique(source_kind,source_id,event_date),
+ exclude using gist(classroom_id with =,slot with &&),
+ exclude using gist(faculty_id with =,slot with &&) where(faculty_id is not null),
+ exclude using gist(section_id with =,slot with &&) where(section_id is not null)
+);
+create view room_occupancy with(security_invoker=true) as select source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at from occupancy_ledger;
+create table notifications(id uuid primary key default gen_random_uuid(), user_id uuid not null references users(id), event text not null, title text not null, body text not null, read_at timestamptz, created_at timestamptz not null default now());
+create table notification_deliveries(id uuid primary key default gen_random_uuid(), notification_id uuid not null references notifications(id), provider text not null check(provider in ('website','whatsapp')), status text not null check(status in ('mock','queued','sent','delivered','failed','skipped_no_consent')), provider_id text, error text, attempts integer not null default 0, created_at timestamptz not null default now());
+create table audit_logs(id bigint generated always as identity primary key, actor_id uuid references users(id), action text not null, entity text not null, before_value jsonb, after_value jsonb, created_at timestamptz not null default now());
+create function audit_is_immutable() returns trigger language plpgsql as $$begin raise exception 'Audit logs are append-only'; end$$;
+create trigger immutable_audit before update or delete on audit_logs for each row execute function audit_is_immutable();
+create table login_attempts(key text primary key, attempts integer not null, window_started timestamptz not null);
+create function allow_login_attempt(attempt_key text) returns boolean language plpgsql security definer set search_path=public as $$
+declare count_now integer;
+begin
+ insert into login_attempts values(attempt_key,1,now()) on conflict(key) do update set attempts=case when login_attempts.window_started<now()-interval '15 minutes' then 1 else login_attempts.attempts+1 end, window_started=case when login_attempts.window_started<now()-interval '15 minutes' then now() else login_attempts.window_started end returning attempts into count_now;
+ return count_now<=5;
+end$$;
+create function reset_login_attempts(attempt_key text) returns void language sql security definer set search_path=public as $$delete from login_attempts where key=attempt_key$$;
+revoke all on function allow_login_attempt(text),reset_login_attempts(text),next_club_reference() from public,anon,authenticated;
+grant execute on function allow_login_attempt(text),reset_login_attempts(text),next_club_reference() to service_role;
+create index room_date_lookup on occupancy_ledger(classroom_id,event_date);
+create index faculty_date_lookup on occupancy_ledger(faculty_id,event_date);
+create index section_date_lookup on occupancy_ledger(section_id,event_date);
+create index recurring_lookup on timetable_sessions(classroom_id,day_of_week,start_minute);
+
+-- All mutations go through authenticated server handlers. No direct client writes.
+create function current_campus_role() returns text language sql stable security definer set search_path=public as $$select role from users where id=auth.uid() and is_active$$;
+revoke all on function current_campus_role() from public;
+grant execute on function current_campus_role() to authenticated;
+do $$declare t text;begin
+ foreach t in array array['departments','buildings','class_sections','users','classrooms','resources','classroom_resources','timetable_versions','timetable_sessions','session_occurrences','makeup_sessions','cancellation_reports','classroom_issues','rep_permissions','booking_counters','club_bookings','maintenance_blocks','occupancy_ledger','notifications','notification_deliveries','audit_logs','login_attempts'] loop
+ execute format('alter table public.%I enable row level security',t);
+ execute format('revoke insert,update,delete on public.%I from anon,authenticated',t);
+ execute format('create policy admin_read on public.%I for select to authenticated using(current_campus_role()=''admin'')',t);
+ end loop;
+end$$;
+create policy self_read on users for select to authenticated using(id=auth.uid());
+create policy own_notices on notifications for select to authenticated using(user_id=auth.uid());
+create policy own_bookings on club_bookings for select to authenticated using(organizer_id=auth.uid());
+create policy own_reports on cancellation_reports for select to authenticated using(rep_id=auth.uid());
+create policy own_permissions on rep_permissions for select to authenticated using(rep_id=auth.uid());
+create policy own_issues on classroom_issues for select to authenticated using(rep_id=auth.uid());
+do $$declare t text;begin
+ foreach t in array array['departments','buildings','classrooms','resources','classroom_resources'] loop
+ execute format('create policy campus_catalog on public.%I for select to authenticated using(current_campus_role() is not null)',t);
+ end loop;
+end$$;
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('campus-private','campus-private',false,5242880,array['application/pdf','image/jpeg','image/png']) on conflict(id) do nothing;
+-- No client storage write policies. Live server upload code must validate files,
+-- authorize owners and generate short-lived signed URLs.

@@ -1,0 +1,120 @@
+import { blockers } from "../availability";
+import {
+  nextDate,
+  type Room,
+  type Session,
+  type Slot,
+  type State,
+} from "../types";
+export type Needs = {
+  seats: number;
+  resources: Record<string, number>;
+  facultyId?: string;
+  section?: string;
+  exclude?: string;
+  block?: string;
+};
+export function validate(
+  state: State,
+  room: Room,
+  slot: Slot,
+  needs: Needs,
+): string[] {
+  const failures: string[] = [];
+  if (!room.active) failures.push("Inactive room");
+  if (room.capacity < needs.seats)
+    failures.push(`Needs ${needs.seats} seats; room has ${room.capacity}`);
+  for (const [name, count] of Object.entries(needs.resources))
+    if ((room.resources[name] ?? 0) < count)
+      failures.push(`Insufficient working ${name.replaceAll("_", " ")}`);
+  const conflicts = blockers(state, slot, {
+    roomId: room.id,
+    facultyId: needs.facultyId,
+    section: needs.section,
+    exclude: needs.exclude,
+  });
+  if (conflicts.some((c) => c.roomId === room.id))
+    failures.push("Room occupied");
+  if (needs.facultyId && conflicts.some((c) => c.facultyId === needs.facultyId))
+    failures.push("Faculty busy");
+  if (needs.section && conflicts.some((c) => c.section === needs.section))
+    failures.push("Section busy");
+  return failures;
+}
+export function score(room: Room, needs: Needs): number {
+  const fit = Math.min(1, needs.seats / room.capacity);
+  return Math.round(
+    Math.max(
+      0,
+      65 * fit +
+        (room.block === needs.block ? 30 : 0) +
+        5 -
+        (room.type === "computer_lab" && !needs.resources.computers ? 15 : 0),
+    ),
+  );
+}
+export function rank(state: State, slot: Slot, needs: Needs) {
+  return state.rooms
+    .map((room) => ({
+      room,
+      failures: validate(state, room, slot, needs),
+      score: score(room, needs),
+      why: `${room.capacity - needs.seats} spare seats${room.block === needs.block ? ", same block" : ""}; working facilities checked`,
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.failures.length > 0) - Number(b.failures.length > 0) ||
+        b.score - a.score ||
+        a.room.number.localeCompare(b.room.number),
+    );
+}
+export function baseline(state: State, slot: Slot, needs: Needs) {
+  return state.rooms.find((room) => !validate(state, room, slot, needs).length);
+}
+export function suggestions(
+  state: State,
+  session: Session,
+  cancelledDate: string,
+) {
+  const results: { room: Room; slot: Slot; score: number; why: string }[] = [];
+  const block = state.rooms.find((room) => room.id === session.roomId)?.block;
+  let searched = 0;
+  for (let offset = 1; searched < 14 && offset < 60; offset++) {
+    const date = nextDate(cancelledDate, offset);
+    if (
+      new Date(date + "T12:00:00Z").getUTCDay() === 0 ||
+      state.holidays.includes(date)
+    )
+      continue;
+    searched++;
+    for (const hour of [9, 10, 11, 13, 14, 15, 16]) {
+      const slot = {
+        date,
+        start: `${String(hour).padStart(2, "0")}:00`,
+        end: `${String(hour + 1).padStart(2, "0")}:00`,
+      };
+      const candidate = rank(state, slot, {
+        seats: session.seats,
+        resources: { projector: 1 },
+        facultyId: session.facultyId,
+        section: session.section,
+        block,
+      }).find((option) => !option.failures.length);
+      if (candidate)
+        results.push({
+          room: candidate.room,
+          slot,
+          score: candidate.score - Math.min(offset, 14),
+          why: candidate.why,
+        });
+    }
+  }
+  return results
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.slot.date.localeCompare(b.slot.date) ||
+        a.slot.start.localeCompare(b.slot.start),
+    )
+    .slice(0, 3);
+}

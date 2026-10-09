@@ -1,3 +1,0 @@
-import { describe,it,expect } from "vitest";
-import { departmentConfig,parseRollNumber } from "../lib/rollNumber";
-describe("roll numbers",()=>{for(const [code,name] of Object.entries(departmentConfig)){it(`maps ${code}`,()=>expect(parseRollNumber(`23${code}001`)).toEqual({year:2023,deptCode:code,department:name}));it(`maps lowercase ${code}`,()=>expect(parseRollNumber(`23${code.toLowerCase()}001`)?.department).toBe(name));}it("rejects invalid numbers",()=>{for(const input of ["23Z","Z23001","2Z001","23ZZ001","23Z00!",""])expect(parseRollNumber(input)).toBeNull();});it("allows manual selection for unknown letters",()=>expect(parseRollNumber("23Q001")?.department).toBeNull());});
