@@ -1,39 +1,52 @@
-# Classroom Allocation System
+# Smart Campus Room Management System
 
-## Separate frontend and backend
+A college hackathon project with five portals and a fixed timetable plus one-time overrides.
 
-| Folder | Responsibility | Technology |
-| --- | --- | --- |
-| frontend/ | Five login portals, dashboards, room forms and search | HTML, CSS, JavaScript |
-| backend/ | Authentication, authorization, database and audit | Python 3.12+, SQLite |
-| docs/ | Feature roadmap and development log | Markdown |
+## Current build: Phase 1
 
-## Start locally
+Next.js 14 App Router, TypeScript, Tailwind, shadcn-style Button, Supabase Auth/database setup, Framer Motion and a lazy React Three Fiber campus hero. Five role login selections, server authorization, roll-number mapping, department confirmation, SQL schema/RLS and a 650-room sample generator are implemented. Later workflows are not complete. See docs/PHASE_PROGRESS.md.
 
-Set CAMPUS_SETUP_PASSWORD to a password of at least 12 characters in your terminal environment, then run:
+Frontend: frontend/app and frontend/components. API route adapters delegate to backend/. Shared typed modules live in lib/. SQL and seeds live in db/.
 
-```bash
-python backend/server.py --setup
-python backend/server.py
+```mermaid
+flowchart TD
+  Portal[Five role portals] --> Routes[Next.js API adapters]
+  Routes --> Auth[Server authorization]
+  Auth --> Handlers[Backend handlers]
+  Handlers --> Supabase[Supabase Auth and Postgres]
+  Supabase --> Logs[Audit and notifications]
 ```
 
-Open http://localhost:8000. Setup creates local development accounts for admin@campus.local, rep@campus.local, club@campus.local, faculty@campus.local and student@campus.local. Select the matching portal and use your setup password. Remove the environment variable after setup. Setup refuses to overwrite existing accounts.
+## Local setup
 
-## Implemented: first phase
+1. Install Node.js 20 or later and run npm ci.
+2. Copy .env.example to frontend/.env.local.
+3. For the local demo, set NEXT_PUBLIC_DEMO=true and a random DEMO_SESSION_SECRET of at least 32 characters. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+4. Run npm run dev and open http://localhost:3000.
+5. Select a portal and use Open demo. No real student records are connected.
 
-Five-role login, expiring sessions, server-enforced admin permissions, classroom search, creation, editing, deactivation, maintenance flags, capacity/facilities and administrator audit history. Passwords use salted PBKDF2. Database files and secrets are excluded from Git.
-
-Non-admin dashboards currently show the classroom directory. In-service rooms are active and not under maintenance; this does not indicate time-slot availability. Timetables, booking and approval workflows are planned in docs/ROADMAP.md.
-
-## Verification
+For live authentication, disable demo mode, configure Supabase environment variables, run db/schema.sql and db/rls.sql in a new project, and seed using an explicitly provided development password. The seed runs from repository root, so supply its environment variables in your terminal; it does not load frontend/.env.local automatically.
 
 ```bash
-python -m unittest discover -s backend -p 'test_*.py' -v
-node --check frontend/app.js
+npm run seed
+npm run typecheck
+npm run lint
+npm run test
+npm run build
 ```
 
-This initial implementation runs locally. Production deployment requires HTTPS, account provisioning, rate limiting and backups.
+Database integration has not been verified against a real Supabase project. Do not seed sample accounts in production.
 
-## GitHub process
+## Fixed timetable and availability design
 
-Use one descriptive commit per completed feature, run its checks, update docs/DEVELOPMENT.md and push. Local commits preserve actual progress while authenticated GitHub write access is unavailable.
+The official weekly timetable stays intact. A cancellation or room change affects one occurrence/date, stored separately. The room_occupancy view combines effective classes, makeups, approved clubs and maintenance. Later phases will use one TypeScript availability function and transactionally reserve rooms; those workflows are not implemented yet.
+
+## Deployment
+
+See docs/DEPLOYMENT.md. This rebuild has not been deployed to Vercel. The earlier hosted sample preview is a separate prototype and does not show this Next.js build.
+
+Next.js 14 was explicitly requested, but the dependency audit identifies known vulnerabilities. Read SECURITY.md before production deployment.
+
+## Process
+
+The supplied requirements are saved in docs/BUILD_SPECIFICATION.md, with persistent rules in AGENTS.md. GitHub history records feature commits. The earlier Python prototype is retained in backend/server.py and the static preview in frontend/preview; neither powers the current Next.js app.

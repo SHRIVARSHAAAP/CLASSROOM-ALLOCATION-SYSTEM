@@ -2,3 +2,12 @@ __pycache__/
 *.sqlite3
 .env
 backend/uploads/
+
+node_modules/
+frontend/.next/
+.next/
+*.tsbuildinfo
+.env*
+!.env.example
+.vercel/
+coverage/

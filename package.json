@@ -1,0 +1,48 @@
+{
+  "name": "smart-campus-room-management",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev frontend",
+    "build": "next build frontend",
+    "start": "next start frontend",
+    "typecheck": "tsc --noEmit -p frontend/tsconfig.json",
+    "lint": "eslint frontend backend lib db --ext .ts,.tsx",
+    "test": "vitest run",
+    "seed": "tsx db/seed.ts",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@supabase/supabase-js": "2.49.8",
+    "zod": "3.24.2",
+    "framer-motion": "11.18.2",
+    "@react-three/fiber": "8.18.0",
+    "@react-three/drei": "9.122.0",
+    "three": "0.173.0",
+    "recharts": "2.15.1",
+    "pdf-lib": "1.17.1",
+    "exceljs": "4.4.0",
+    "@radix-ui/react-slot": "1.1.2",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.6.0",
+    "lucide-react": "0.468.0"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@types/node": "22.13.10",
+    "@types/three": "0.173.0",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.35",
+    "vitest": "3.0.9",
+    "tsx": "4.19.3",
+    "tailwindcss": "3.4.17",
+    "postcss": "8.5.3",
+    "autoprefixer": "10.4.21"
+  }
+}
