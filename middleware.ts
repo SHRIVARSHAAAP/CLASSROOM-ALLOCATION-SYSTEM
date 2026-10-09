@@ -52,4 +52,4 @@ export async function middleware(request: NextRequest) {
     ? NextResponse.next()
     : NextResponse.redirect(new URL("/login/student", request.url));
 }
-export const config = { matcher: ["/portal/:path*"] };
+export const config = { matcher: ["/portal/:path*"], runtime: "nodejs" };
