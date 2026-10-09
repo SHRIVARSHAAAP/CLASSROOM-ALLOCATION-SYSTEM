@@ -15,8 +15,8 @@ export function readDemoToken(token:string):CampusUser|null {
  try{const value=JSON.parse(Buffer.from(payload,"base64url").toString());if(value.exp<Date.now()||!roles.includes(value.user?.role))return null;return value.user as CampusUser;}catch{return null;}
 }
 export async function currentUser():Promise<CampusUser|null>{
- if(demoEnabled()){const token=cookies().get("campus_demo")?.value;return token?readDemoToken(token):null;}
- const token=cookies().get("campus_access")?.value;if(!token)return null;
+ if(demoEnabled()){const token=(await cookies()).get("campus_demo")?.value;return token?readDemoToken(token):null;}
+ const token=(await cookies()).get("campus_access")?.value;if(!token)return null;
  const {data,error}=await database().auth.getUser(token);if(error||!data.user)return null;return getUser(data.user.id);
 }
 export async function requireRole(allowed:Role[]):Promise<CampusUser>{const user=await currentUser();if(!user)throw new HttpError(401,"Sign in to continue.");if(!allowed.includes(user.role))throw new HttpError(403,"This portal is not available for your account.");return user;}

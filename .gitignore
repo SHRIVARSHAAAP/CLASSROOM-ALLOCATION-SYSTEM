@@ -11,3 +11,5 @@ frontend/.next/
 !.env.example
 .vercel/
 coverage/
+
+next-env.d.ts

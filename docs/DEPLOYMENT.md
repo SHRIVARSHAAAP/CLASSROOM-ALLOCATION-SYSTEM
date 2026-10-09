@@ -1,13 +1,23 @@
-# Vercel and Supabase deployment preparation
+# Vercel deployment
 
-No Vercel deployment has been performed and no Supabase project is configured. This is Phase 1 setup, not the final Phase 11 deployment checklist.
+This repository now builds as a standard Next.js app from repository root. Root app/ files are route adapters; the frontend components and backend handlers remain separate.
 
-1. Resolve the Next.js 14 dependency advisories by moving to a patched supported major; re-run all checks. Preserve requested architecture and document the stack change.
-2. Create an isolated Supabase project. In its SQL editor run db/schema.sql then db/rls.sql, once, on a new database. Verify all statements and RLS behavior. The scripts create private signed-letters and issue-photos buckets with MIME/size limits; signed-URL routes are a later phase.
-3. Store the Supabase URL and anon key in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY. Store SUPABASE_SERVICE_ROLE_KEY only as a server secret.
-4. To seed development accounts, set these values and SEED_USER_PASSWORD in a terminal, then npm run seed. Account emails use campus.example; students log in with 23Z001 through 23Z060. Never commit the password.
-5. Import SHRIVARSHAAAP/CLASSROOM-ALLOCATION-SYSTEM into Vercel. Keep repository root as the project root because shared backend/lib folders are outside frontend. Set framework preset to Other, install command npm ci, build command npm run build. Configure the Next.js project deployment integration with frontend as its app directory and access to parent source; verify this monorepo configuration with Vercel before publication. A tested vercel.json is still pending.
-6. Set NEXT_PUBLIC_DEMO=false for real auth. Use demo mode only with sample records and a server-only random DEMO_SESSION_SECRET. WHATSAPP_MODE=mock until WhatsApp integration is implemented and verified.
-7. Choose a deployment region near the Supabase region. Check home/login, wrong-role rejection, all five portal entries, student department confirmation, logout and unauthenticated redirects before sharing.
+## Current preview scope
 
-Live reservation, upload, attendance, WhatsApp and map smoke tests belong to the final phase. The actual college map image is still required; do not invent or redraw it.
+Publish with NEXT_PUBLIC_DEMO=true. This demonstrates the implemented login portals and classroom finder using generated sample rooms; it is not the completed campus system. Live Supabase workflows remain unverified.
+
+## Deploy from Vercel
+
+1. Import SHRIVARSHAAAP/CLASSROOM-ALLOCATION-SYSTEM at https://vercel.com/new.
+2. Keep Root Directory as repository root (do not select frontend).
+3. Use the Next.js framework preset. vercel.json supplies npm ci and npm run build.
+4. Set NEXT_PUBLIC_DEMO=true for Production and Preview, then set DEMO_SESSION_SECRET to a random secret of at least 32 characters in both environments. Generate one locally with Node crypto.randomBytes(32).toString('hex'). Never commit it.
+5. Deploy. Use the actual deployment URL returned by Vercel, and smoke-test all five portal demos, student department confirmation, room filters, logout and unauthenticated redirects.
+
+CLI deployment requires Vercel account authentication. vercel login uses a device sign-in link. Once authenticated: link the project, set environment variables through vercel env add (stdin for secrets), and run vercel --prod. Keep the default account/project audience settings; don't change access controls without a user request. Authentication and a successful deployment must be verified before claiming the site is live.
+
+## Live Supabase setup, after later workflows are implemented
+
+Create an isolated Supabase project; run db/schema.sql then db/rls.sql once, validate statements and RLS behavior, and seed using explicitly supplied development environment variables. Storage buckets are private. Supply NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and server-only SUPABASE_SERVICE_ROLE_KEY. Disable demo mode for real data. Do not seed sample accounts into production.
+
+The college map image is still missing. Timetable approvals, bookings, WhatsApp, maps and attendance are unfinished. This deployment is only the current demo.

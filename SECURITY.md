@@ -1,6 +1,6 @@
 # Security status
 
-Do not present this build as production-ready. This project follows the requested Next.js 14 stack. npm audit reports known critical advisories affecting 14.2.35. Upgrading to a patched major, resolving all runtime dependency advisories and rerunning checks are required before deployment with real campus data. See https://github.com/vercel/next.js/security/advisories/GHSA-2xp9-vwfh-vxw4.
+Do not present this build as production-ready. Deployment preparation upgraded Next.js 14.2.35 to 15.5.27, updated Supabase, and pinned patched PostCSS/UUID dependencies. The earlier Next.js 14 warning is retained in development history; do not use that old version for deployment. The prepared build reports zero production dependency vulnerabilities in npm audit. Live Supabase integrations and unfinished workflow security still require verification.
 
 Authentication uses Supabase Auth; live passwords are handled by Supabase. Admin-issued identities are seeded only with an explicitly supplied development password. Authorization runs in server handlers. Supabase service keys are server-only. Demo tokens are HMAC-signed, expire after eight hours, and use HttpOnly SameSite cookies. Demo mode never falls through to live mutations. Disable it for production. Use a random DEMO_SESSION_SECRET with at least 32 characters.
 

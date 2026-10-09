@@ -4,7 +4,7 @@ A college hackathon project with five portals and a fixed timetable plus one-tim
 
 ## Current build: Phase 1
 
-Next.js 14 App Router, TypeScript, Tailwind, shadcn-style Button, Supabase Auth/database setup, Framer Motion and a lazy React Three Fiber campus hero. Five role login selections, server authorization, roll-number mapping, department confirmation, SQL schema/RLS and a 650-room sample generator are implemented. The first Phase 2 slice adds a date/time classroom finder backed by one tested availability module. Timetable editing, approvals and later workflows are not complete. See docs/PHASE_PROGRESS.md.
+Next.js 15.5.27 App Router, TypeScript, Tailwind, shadcn-style Button, Supabase Auth/database setup, Framer Motion and a lazy React Three Fiber campus hero. Five role login selections, server authorization, roll-number mapping, department confirmation, SQL schema/RLS and a 650-room sample generator are implemented. The first Phase 2 slice adds a date/time classroom finder backed by one tested availability module. Timetable editing, approvals and later workflows are not complete. See docs/PHASE_PROGRESS.md.
 
 Frontend: frontend/app and frontend/components. API route adapters delegate to backend/. Shared typed modules live in lib/. SQL and seeds live in db/.
 
@@ -20,12 +20,12 @@ flowchart TD
 ## Local setup
 
 1. Install Node.js 20 or later and run npm ci.
-2. Copy .env.example to frontend/.env.local.
+2. Copy .env.example to .env.local.
 3. For the local demo, set NEXT_PUBLIC_DEMO=true and a random DEMO_SESSION_SECRET of at least 32 characters. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 4. Run npm run dev and open http://localhost:3000.
 5. Select a portal and use Open demo. No real student records are connected.
 
-For live authentication, disable demo mode, configure Supabase environment variables, run db/schema.sql and db/rls.sql in a new project, and seed using an explicitly provided development password. The seed runs from repository root, so supply its environment variables in your terminal; it does not load frontend/.env.local automatically.
+For live authentication, disable demo mode, configure Supabase environment variables, run db/schema.sql and db/rls.sql in a new project, and seed using an explicitly provided development password. The seed runs from repository root, so supply its environment variables in your terminal; it does not load .env.local automatically.
 
 ```bash
 npm run seed
@@ -45,7 +45,7 @@ The official weekly timetable stays intact. A cancellation or room change affect
 
 See docs/DEPLOYMENT.md. This rebuild has not been deployed to Vercel. The earlier hosted sample preview is a separate prototype and does not show this Next.js build.
 
-Next.js 14 was explicitly requested, but the dependency audit identifies known vulnerabilities. Read SECURITY.md before production deployment.
+The deployment preparation updates the originally requested Next.js 14 to patched Next.js 15.5.27 and applies dependency fixes. Read SECURITY.md for remaining integration limits.
 
 ## Process
 

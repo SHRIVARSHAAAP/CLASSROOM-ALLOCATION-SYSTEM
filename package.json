@@ -3,20 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev frontend",
-    "build": "next build frontend",
-    "start": "next start frontend",
-    "typecheck": "tsc --noEmit -p frontend/tsconfig.json",
-    "lint": "eslint frontend backend lib db --ext .ts,.tsx",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app frontend backend lib db --ext .ts,.tsx",
     "test": "vitest run",
     "seed": "tsx db/seed.ts",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "dependencies": {
-    "next": "14.2.35",
+    "next": "15.5.27",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "@supabase/supabase-js": "2.49.8",
+    "@supabase/supabase-js": "2.117.3",
     "zod": "3.24.2",
     "framer-motion": "11.18.2",
     "@react-three/fiber": "8.18.0",
@@ -38,11 +38,17 @@
     "@types/node": "22.13.10",
     "@types/three": "0.173.0",
     "eslint": "8.57.1",
-    "eslint-config-next": "14.2.35",
+    "eslint-config-next": "15.5.27",
     "vitest": "3.0.9",
     "tsx": "4.19.3",
     "tailwindcss": "3.4.17",
-    "postcss": "8.5.3",
+    "postcss": "8.5.28",
     "autoprefixer": "10.4.21"
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   }
 }

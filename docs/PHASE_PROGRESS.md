@@ -17,3 +17,9 @@ Implemented lib/availability.ts, authenticated room search, date/time/capacity/b
 All four checks pass; 35 unit tests total. HTTP smoke checks cover unauthorized access, all 650 rooms, combined free/capacity/facility filtering, finder rendering and invalid calendar dates.
 
 This is a completed availability feature, not the whole phase. Admin CRUD, timetable import/manual editing/publishing and weekly views are still pending. No later phase is marked complete. Live query verification and transactional workflow development require a configured Supabase test database.
+
+## Vercel deployment preparation
+
+Added repository-root Next.js route adapters and vercel.json for standard Vercel detection. Upgraded Next.js to 15.5.27, made cookie access asynchronous, updated Supabase and patched transitive PostCSS/UUID. Secrets remain in ignored environment files and are excluded from deployment uploads. Publishing awaits Vercel device sign-in; no deployment URL is recorded until publication succeeds.
+
+Deployment checks: TypeScript, ESLint, all 35 Vitest tests and Next.js production build pass. Production npm audit reports zero vulnerabilities. HTTP smoke checks pass for every demo role, 650-room queries, student department confirmation and logout. ExcelJS round-trip passes after the UUID override.

@@ -1,0 +1,22 @@
+{
+  "extends": "./frontend/tsconfig.json",
+  "compilerOptions": {
+    "incremental": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "frontend/**/*.ts",
+    "frontend/**/*.tsx",
+    "backend/**/*.ts",
+    "lib/**/*.ts",
+    "db/**/*.ts",
+    "tests/**/*.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "frontend/.next"
+  ]
+}
