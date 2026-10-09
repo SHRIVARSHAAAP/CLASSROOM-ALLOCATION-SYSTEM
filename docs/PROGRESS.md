@@ -9,3 +9,7 @@ Live Supabase workflow persistence, occupancy-ledger transaction synchronization
 Validation: ESLint, TypeScript, 17 domain tests and the production build passed. HTTP smoke checks passed for the homepage, login and dashboard for all five roles, and rejection of cross-origin login requests. Live database policies have not been executed or verified. Deployment details are added after publication. No private deployment claim credential belongs in this file.
 
 Deployment compatibility: use Node.js middleware because Vercel temporary deployments reject Edge middleware.
+
+## Verified fresh Vercel preview
+
+https://temporary-snappy-comet-evh6yg4.vercel.app/ is READY. All five deployed sample role logins and dashboards returned successful responses; the homepage was visually verified in Chrome. The anonymous deployment expires at 2026-10-09T15:43:38.692000+00:00 unless claimed. The claim credential is shared privately with the user and excluded from git.
