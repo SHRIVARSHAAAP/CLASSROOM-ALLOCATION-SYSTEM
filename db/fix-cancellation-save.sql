@@ -130,7 +130,15 @@ begin
  -- Rebuild dated occupancy in this same transaction. Exclusion constraints enforce
  -- room, faculty and section clashes across recurring classes, makeups and clubs.
  -- A pending report does not change any room reservation.
- if operation <> 'report' then
+ if operation = 'decide' then
+  -- Approval/rejection changes only a dated occurrence, not the base timetable.
+  for row_data in select value from jsonb_array_elements(coalesce(change->'overrides','[]')) loop
+   if coalesce((row_data->>'cancelled')::boolean,false) then
+    delete from public.occupancy_ledger where source_kind='regular'
+     and source_id=(row_data->>'sessionId')::uuid and event_date=(row_data->>'date')::date;
+   end if;
+  end loop;
+ elsif operation <> 'report' then
  delete from public.occupancy_ledger;
  insert into public.occupancy_ledger(source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at)
  select 'regular',s.id,coalesce(o.classroom_override,s.classroom_id),s.faculty_id,s.section_id,d::date,

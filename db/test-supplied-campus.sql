@@ -22,6 +22,10 @@ insert into public.users(id,name,email,role,section_id) values
 insert into auth.users(id) values('00000000-0000-4000-8000-000000000097');
 insert into public.users(id,name,email,role) values
 ('00000000-0000-4000-8000-000000000097','Second admin','second-admin@test.invalid','admin');
+insert into auth.users(id) values('00000000-0000-4000-8000-000000000095'),('00000000-0000-4000-8000-000000000096');
+insert into public.users(id,name,email,role) values
+('00000000-0000-4000-8000-000000000095','First faculty','first-faculty@test.invalid','faculty'),
+('00000000-0000-4000-8000-000000000096','Second faculty','second-faculty@test.invalid','faculty');
 do $$
 declare session_uuid uuid; ledger_before bigint;
 begin
@@ -40,5 +44,20 @@ begin
  if not exists(select 1 from public.cancellation_reports where id='00000000-0000-4000-8000-000000000098' and status='pending') then raise exception 'Report not saved'; end if;
  if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000001' and event='cancellation_reported') then raise exception 'Admin notice not created'; end if;
  if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000097' and event='cancellation_reported') then raise exception 'Second admin notice not created'; end if;
+
+ -- Approve the existing pending report and create notifications for all affected roles.
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000001',
+ (select revision from public.campus_revision where id=1),
+ jsonb_build_object('type','decide','targetSection','2026-Z-G1',
+ 'requests',jsonb_build_array(jsonb_build_object('id','00000000-0000-4000-8000-000000000098','sessionId',session_uuid,'date','2026-10-14','type','cancellation','reason','Faculty has other work','status','approved','note','Approved makeup required','makeup',true)),
+ 'overrides',jsonb_build_array(jsonb_build_object('sessionId',session_uuid,'date','2026-10-14','cancelled',true,'reason','Faculty has other work')),
+ 'audit',jsonb_build_object('action','cancellation_approved','before',jsonb_build_object('status','pending'),'after',jsonb_build_object('status','approved')),
+ 'notice',jsonb_build_object('roles',jsonb_build_array('rep','faculty','student'),'title','Cancellation approved','body','Makeup required')));
+ if not exists(select 1 from public.cancellation_reports where id='00000000-0000-4000-8000-000000000098' and status='approved' and makeup_required) then raise exception 'Approval not saved'; end if;
+ if not exists(select 1 from public.session_occurrences where session_id=session_uuid and event_date='2026-10-14' and status='cancelled') then raise exception 'Dated cancellation missing'; end if;
+ if exists(select 1 from public.occupancy_ledger where source_kind='regular' and source_id=session_uuid and event_date='2026-10-14') then raise exception 'Cancelled reservation not released'; end if;
+ if not exists(select 1 from public.occupancy_ledger where source_kind='regular' and source_id=session_uuid and event_date='2026-10-21') then raise exception 'Following week altered'; end if;
+ if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000099' and event='cancellation_approved') then raise exception 'Rep approval notice missing'; end if;
+ if (select count(*) from public.notifications where user_id in ('00000000-0000-4000-8000-000000000095','00000000-0000-4000-8000-000000000096') and event='cancellation_approved')<>2 then raise exception 'Faculty approval notices missing'; end if;
 end$$;
 rollback;
