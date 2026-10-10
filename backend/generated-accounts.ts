@@ -20,7 +20,7 @@ export async function setupPost(request:Request){
   if(demoMode())throw new AppError(403,"Use your real admin login.");
   await requireRole(["admin"]);
   const raw=await request.text();if(raw.length>1024)throw new AppError(413,"Invalid setup input.");
-  const input=z.object({offset:z.number().int().min(0).max(plan.accounts.length),password:z.string().min(16).max(128)}).strict().parse(JSON.parse(raw));
+  const input=z.object({offset:z.number().int().min(0).max(plan.accounts.length),password:z.string().min(16).max(128),resetGenerated:z.boolean().optional()}).strict().parse(JSON.parse(raw));
   const db=supabase(true);
   const ready=await db.from("users").select("is_generated").limit(1);
   if(ready.error)throw new AppError(503,"Run the updated db/restore-supplied-campus.sql once, then try again.");
@@ -38,11 +38,13 @@ export async function setupPost(request:Request){
   const rows=[];
   for(const account of plan.accounts.slice(input.offset,input.offset+10)){
    if(account.rollNumber){
-    const student=await db.from("users").select("id,name,email,role,roll_number").eq("roll_number",account.rollNumber).maybeSingle();
+    const student=await db.from("users").select("id,name,email,role,roll_number,is_generated").eq("roll_number",account.rollNumber).maybeSingle();
     if(student.error)throw new AppError(503,"Cannot check existing student account.");
     if(student.data){
      if(student.data.role!=="student")throw new AppError(409,"An existing roll number has a different role.");
-     rows.push({name:student.data.name,email:student.data.email,role:"student",rollNumber:student.data.roll_number,status:"existing",password:"Unchanged"});
+     const reset=Boolean(input.resetGenerated && student.data.is_generated);
+     if(reset){const updated=await db.auth.admin.updateUserById(student.data.id,{password:input.password});if(updated.error)throw new AppError(503,"Cannot set temporary student password.");}
+     rows.push({name:student.data.name,email:student.data.email,role:"student",rollNumber:student.data.roll_number,status:reset?"password_updated":"existing",password:reset?input.password:"Unchanged"});
      continue;
     }
    }
@@ -59,7 +61,9 @@ export async function setupPost(request:Request){
     const saved=await db.from("users").insert({id:user.id,name:account.name,email:account.email,role:account.role,section_id:account.section,department_id:account.department,roll_number:account.rollNumber,club_permission:account.clubPermission,is_active:true,is_generated:true});
     if(saved.error)throw new AppError(503,"Could not link "+account.email+". Resume setup to finish its profile.");
    }
-   rows.push({name:profile.data?.name ?? account.name,email:account.email,role:account.role,rollNumber:account.rollNumber,status:created?"created":"existing",password:created?input.password:"Unchanged"});
+   const reset=Boolean(!created && input.resetGenerated && profile.data?.is_generated && account.role!=="admin");
+   if(reset){const updated=await db.auth.admin.updateUserById(user.id,{password:input.password});if(updated.error)throw new AppError(503,"Cannot set temporary account password.");}
+   rows.push({name:profile.data?.name ?? account.name,email:account.email,role:account.role,rollNumber:account.rollNumber,status:created?"created":reset?"password_updated":"existing",password:created||reset?input.password:"Unchanged"});
   }
   return NextResponse.json({done:false,nextOffset:Math.min(input.offset+10,plan.accounts.length),total:plan.accounts.length,accounts:rows},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return failure(error);}
