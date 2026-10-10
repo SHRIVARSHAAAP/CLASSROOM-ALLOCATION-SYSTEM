@@ -238,7 +238,7 @@ export default function Workspace({
     }
   }
   const props: FeatureProps | null = state
-    ? { state, user, action, busy, save }
+    ? { state, user, action, busy, save, demo }
     : null;
   const unread =
     state?.notifications.filter(

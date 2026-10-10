@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import WhatsappSettings from "./whatsapp-settings";
 import {
   ArrowRight,
   CalendarDays,
@@ -40,6 +41,7 @@ import TimetableTables, { type TimetableRow } from "./timetable-tables";
 import { effectiveSessions, Tag } from "./dashboard";
 
 export type FeatureProps = {
+  demo?: boolean;
   state: State;
   user: User;
   action: (input: DemoAction, message?: string) => Promise<void>;
@@ -1466,15 +1468,16 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
     </>
   );
 }
-export function Notifications({ state, user, save }: FeatureProps) {
+export function Notifications({ state, user, save, demo = true }: FeatureProps) {
   const notifications = state.notifications.filter((n) =>
     n.roles.includes(user.role),
   );
   return (
     <>
+      {!demo && <WhatsappSettings admin={user.role === "admin"} />}
       <div className="toolbar">
         <p className="muted">
-          In-app updates are saved with your demo records.
+          In-app updates show your requests and timetable changes.
         </p>
         <button
           className="secondary"
@@ -1507,9 +1510,9 @@ export function Notifications({ state, user, save }: FeatureProps) {
                 })}{" "}
                 IST
               </small>
-              {user.role === "admin" && (
+              {(!demo || user.role === "admin") && (
                 <p className="muted small">
-                  WhatsApp: not sent — delivery is not connected
+                  WhatsApp: {demo ? "Demo — no message sent" : (notice.whatsappDelivery === "skipped_no_consent" ? "Not sent — no active consent or valid number" : notice.whatsappDelivery ?? "Not sent")}
                 </p>
               )}
             </div>

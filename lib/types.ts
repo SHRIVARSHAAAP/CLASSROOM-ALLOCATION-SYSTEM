@@ -110,6 +110,7 @@ export type Notification = {
   time: string;
   read: Role[];
   whatsapp: "mock" | "skipped_no_consent";
+  whatsappDelivery?: string;
 };
 export type Audit = {
   id: string;

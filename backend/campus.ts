@@ -1,5 +1,6 @@
 import "server-only";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { dispatchWhatsapp } from "./whatsapp";
 import { z } from "zod";
 import { applyAction, actionSchema } from "./actions";
 import { AppError, demoMode, requireRole, sameOrigin, supabase } from "./auth";
@@ -32,7 +33,7 @@ export async function campusSnapshot() {
     const names = ["users", "buildings", "class_sections", "classrooms", "classroom_resources",
       "timetable_versions", "timetable_sessions", "session_occurrences", "makeup_sessions",
       "cancellation_reports", "classroom_issues", "rep_permissions", "club_bookings",
-      "maintenance_blocks", "notifications", "audit_logs", "campus_holidays"];
+      "maintenance_blocks", "notifications", "notification_deliveries", "audit_logs", "campus_holidays"];
     const tables = await Promise.all(names.map(readTable));
     const data = Object.fromEntries(names.map((name, index) => [name, tables[index]]));
     const after = await readTable("campus_revision");
@@ -108,6 +109,7 @@ export async function campusSnapshot() {
         id: text(r, "id"), roles: [roleSchema.parse(users.get(text(r, "user_id"))?.role)],
         title: text(r, "title"), body: text(r, "body"), time: text(r, "created_at"),
         read: r.read_at ? [roleSchema.parse(users.get(text(r, "user_id"))?.role)] : [], whatsapp: "skipped_no_consent",
+        whatsappDelivery: text(data.notification_deliveries.find((d) => d.notification_id === r.id && d.provider === "whatsapp"), "status") || "skipped_no_consent",
       })),
       audit: data.audit_logs.map((r) => ({
         id: text(r, "id"), role: roleSchema.parse(users.get(text(r, "actor_id"))?.role ?? "admin"),
@@ -257,6 +259,7 @@ export async function liveAction(request: Request) {
     });
     if (write.error) throw new AppError(409, "The change was not saved. Data may have changed, a room may be occupied, or the database update is missing. Refresh and retry.");
     committed = true;
+    after(async () => { try { await dispatchWhatsapp(); } catch { /* In-app updates remain saved. */ } });
     return await response(await campusSnapshot(), user);
   } catch (error) {
     if (uploaded && !committed) await supabase(true).storage.from("campus-private").remove([uploaded]);
