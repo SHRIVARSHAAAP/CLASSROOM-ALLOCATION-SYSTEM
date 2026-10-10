@@ -46,6 +46,7 @@ export const navigation: Record<Role, string[]> = {
     "request-permission",
     "change-room",
     "my-requests",
+    "map",
     "notifications",
   ],
   club: [
@@ -55,6 +56,7 @@ export const navigation: Record<Role, string[]> = {
     "hod-letter",
     "signed-letter",
     "my-bookings",
+    "map",
     "notifications",
   ],
   faculty: ["dashboard", "timetable", "rooms", "map", "notifications"],

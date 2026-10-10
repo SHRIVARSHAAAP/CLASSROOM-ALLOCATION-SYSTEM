@@ -51,6 +51,8 @@ export default function Rooms({
   needs?: Needs;
   image?: (file: File) => void;
 }) {
+  const campusImage = state.mapImage || "/campus-map.jpg";
+  const [mapImageError, setMapImageError] = useState("");
   const [date, setDate] = useState(fixedSlot?.date ?? today());
   const [start, setStart] = useState(fixedSlot?.start ?? "09:00");
   const [end, setEnd] = useState(fixedSlot?.end ?? "10:00");
@@ -230,19 +232,18 @@ export default function Rooms({
                   <MapPin size={20} />
                 </div>
                 <p className="muted small">
-                  {state.mapImage
-                    ? "Uploaded campus map · approximate normalized anchors"
-                    : "Schematic preview — the college map image has not been attached."}
+                  PSG campus map · select a block to explore its classrooms
                 </p>
                 <div
-                  className={"map-canvas " + (state.mapImage ? "uploaded" : "")}
+                  className="map-canvas uploaded"
                 >
-                  {state.mapImage && (
+                  {mapImageError !== campusImage && (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={state.mapImage}
-                        alt="Uploaded campus map, displayed without cropping"
+                        src={campusImage}
+                        onError={() => setMapImageError(campusImage)}
+                        alt="PSG campus map, displayed without cropping"
                       />
                     </>
                   )}
@@ -250,36 +251,6 @@ export default function Rooms({
                     viewBox="0 0 1287 882"
                     aria-label="Clickable academic blocks"
                   >
-                    {!state.mapImage && (
-                      <>
-                        <defs>
-                          <pattern
-                            id="campus-grid"
-                            width="45"
-                            height="45"
-                            patternUnits="userSpaceOnUse"
-                          >
-                            <path d="M45 0H0V45" stroke="#dce4ef" fill="none" />
-                          </pattern>
-                        </defs>
-                        <rect
-                          width="1287"
-                          height="882"
-                          fill="url(#campus-grid)"
-                        />
-                        <path
-                          d="M105 770L450 430L1080 270M450 430L840 565"
-                          stroke="#b9cadd"
-                          strokeWidth="11"
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                        <circle cx="105" cy="770" r="16" fill="#0e7c7b" />
-                        <text x="35" y="823" fill="#4a6a9e" fontSize="24">
-                          Quadrangle / entrance
-                        </text>
-                      </>
-                    )}
                     {hotspots.map(([id, px, py]) => {
                       const x = Math.max(62, Math.min(1220, px)),
                         y = py;
@@ -337,6 +308,11 @@ export default function Rooms({
                     })}
                   </svg>
                 </div>
+                {mapImageError === campusImage && (
+                  <p className="error-note" role="alert">
+                    The campus map could not load. Use the Block selector to browse classrooms.
+                  </p>
+                )}
                 {image && (
                   <label className="upload-box">
                     Replace campus image

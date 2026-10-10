@@ -18,7 +18,7 @@ export default function StudentCampusMap({ state }: { state: State }) {
   const [floor, setFloor] = useState("");
   const [selected, setSelected] = useState<Room | null>(null);
   const [failedImage, setFailedImage] = useState("");
-  const mapSource = state.mapImage || "/campus-map.png";
+  const mapSource = state.mapImage || "/campus-map.jpg";
   const mapReady = failedImage !== mapSource;
   const rooms = state.rooms.filter((room) => room.block === block);
   const floors = Array.from(new Set(rooms.map((room) => room.floor))).sort((a, b) => b - a);
