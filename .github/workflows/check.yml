@@ -54,3 +54,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/restore-supplied-campus.sql
           psql -v ON_ERROR_STOP=1 -f db/restore-supplied-campus.sql
           psql -v ON_ERROR_STOP=1 -f db/test-supplied-campus.sql
+
+          psql -v ON_ERROR_STOP=1 -f db/test-generated-setup.sql

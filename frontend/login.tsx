@@ -113,7 +113,7 @@ export default function Login({ role, demo }: { role: Role; demo: boolean }) {
             }}
           >
             <label className="line-field">
-              {role === "student" ? "Roll no" : "Email"}
+              {role === "student" ? "Email or roll no" : "Email"}
               <span>
                 {role === "student" ? (
                   <GraduationCap size={20} />
@@ -130,8 +130,11 @@ export default function Login({ role, demo }: { role: Role; demo: boolean }) {
                     demo
                       ? "Sample account — no credentials needed"
                       : role === "student"
-                        ? "23Z001"
-                        : "name@psgtech.ac.in"
+                        ? "kavin@gmail.com or 26z264"
+                        : role === "admin" ? "admin@gmail.com"
+                        : role === "faculty" ? "gopalramsd@gmail.com"
+                        : role === "rep" ? "cseg1@gmail.com"
+                        : "theeye@gmail.com"
                   }
                 />
               </span>

@@ -51,7 +51,7 @@ export async function login(request: Request) {
     if (!attempt.data)
       throw new AppError(429, "Account locked. Try again after 15 minutes.");
     let email = input.identifier.toLowerCase();
-    if (input.role === "student") {
+    if (input.role === "student" && !input.identifier.includes("@")) {
       const profile = await db
         .from("users")
         .select("email")
