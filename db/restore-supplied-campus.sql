@@ -1317,7 +1317,7 @@ alter table public.campus_generated_setup_state enable row level security;
 revoke all on public.campus_generated_setup_state from anon,authenticated;
 grant all on public.campus_generated_setup_state to service_role;
 create or replace function public.campus_generated_setup(actor_id uuid,assignments jsonb)
-returns integer language plpgsql security definer set search_path=public as $
+returns integer language plpgsql security definer set search_path=public as $$
 declare actor_role text; rev bigint; item jsonb; total integer; rooms_patch jsonb;
 begin
  select role into actor_role from public.users where id=actor_id and is_active;
@@ -1348,7 +1348,7 @@ begin
  select count(*) into total from public.timetable_sessions where version_id='20260000-0000-4000-8000-000000000001'
  and session_type in ('class','lab') and faculty_id is not null;
  return total;
-end$;
+end$$;
 revoke all on function public.campus_generated_setup(uuid,jsonb) from public,anon,authenticated;
 grant execute on function public.campus_generated_setup(uuid,jsonb) to service_role;
 
