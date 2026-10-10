@@ -2038,3 +2038,26 @@ td small {
     animation: none !important;
   }
 }
+
+/* Student campus directory uses neutral room details. */
+.student-block-list,
+.student-classroom-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.student-campus-directory button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.student-campus-directory button:focus-visible {
+  outline: 3px solid #0e7c7b;
+  outline-offset: 3px;
+}
+.student-campus-directory .map-canvas[hidden] {
+  display: none;
+}
+.student-room-details {
+  margin-top: 20px;
+}

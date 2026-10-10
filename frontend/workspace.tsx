@@ -33,6 +33,7 @@ import {
 } from "@/lib/types";
 import Dashboard from "./dashboard";
 import Rooms from "./rooms";
+import StudentCampusMap from "./student-campus-map";
 import {
   AuditLog,
   BookingForm,
@@ -233,8 +234,11 @@ export default function Workspace({
       case "dashboard":
         return <Dashboard state={props.state} user={user} />;
       case "rooms":
-        return <Rooms state={props.state} />;
+        return user.role === "student"
+          ? <StudentCampusMap state={props.state} />
+          : <Rooms state={props.state} />;
       case "map":
+        if (user.role === "student") return <StudentCampusMap state={props.state} />;
         return (
           <Rooms
             state={props.state}

@@ -58,7 +58,7 @@ export const navigation: Record<Role, string[]> = {
     "notifications",
   ],
   faculty: ["dashboard", "timetable", "rooms", "map", "notifications"],
-  student: ["dashboard", "timetable", "rooms", "map", "notifications"],
+  student: ["dashboard", "timetable", "map", "notifications"],
 };
 export function title(view: string, role: Role): string {
   return view === "timetable" && role !== "admin"

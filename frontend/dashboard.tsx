@@ -67,7 +67,7 @@ export default function Dashboard({
   const notices = state.notifications.filter((n) =>
     n.roles.includes(user.role),
   );
-  const available = state.rooms.filter(
+  const available = user.role === "student" ? 0 : state.rooms.filter(
     (r) => availability(state, r, { date, start: "09:00", end: "10:00" }).free,
   ).length;
   const stats =
@@ -97,7 +97,7 @@ export default function Dashboard({
               : sessions.filter((s) => s.status !== "cancelled").length,
             CalendarDays,
           ],
-          ["Available rooms*", available, Building2],
+          ...(user.role === "student" ? [] : [["Available rooms*", available, Building2] as const]),
           [
             "Unread updates",
             notices.filter((n) => !n.read.includes(user.role)).length,
@@ -141,7 +141,7 @@ export default function Dashboard({
           </article>
         ))}
       </div>
-      {user.role !== "admin" && (
+      {user.role !== "admin" && user.role !== "student" && (
         <p className="muted small">
           *Availability count uses the sample 09:00–10:00 IST slot.
         </p>
@@ -288,6 +288,7 @@ export default function Dashboard({
           )}
         </section>
       </div>
+      {user.role !== "student" && (
       <section className="panel">
         <div className="panel-heading">
           <div>
@@ -336,6 +337,7 @@ export default function Dashboard({
             })}
         </div>
       </section>
+      )}
     </>
   );
 }
