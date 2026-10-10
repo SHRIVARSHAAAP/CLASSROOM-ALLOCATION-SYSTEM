@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
 import FacultyPool from "./faculty-pool";
-import GeneratedSetup from "./generated-setup";
 import {
   ArrowRight,
   CalendarDays,
@@ -975,11 +974,10 @@ export function Bookings(props: FeatureProps) {
     </>
   );
 }
-export function Classrooms({ state, action, busy, demo = true }: FeatureProps) {
+export function Classrooms({ state, action, busy }: FeatureProps) {
   const [room, setRoom] = useState<Room | null>(null);
   return (
     <>
-      {!demo && <GeneratedSetup />}
       <div className="toolbar">
         <p className="muted">
           Manage capacities, working facilities and room status.

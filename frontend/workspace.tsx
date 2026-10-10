@@ -32,6 +32,7 @@ import {
   type User,
 } from "@/lib/types";
 import Dashboard from "./dashboard";
+import GeneratedSetup from "./generated-setup";
 import Rooms from "./rooms";
 import StudentCampusMap from "./student-campus-map";
 import {
@@ -288,6 +289,8 @@ export default function Workspace({
             }
           />
         );
+      case "accounts":
+        return user.role === "admin" && !demo ? <GeneratedSetup /> : <p>Account management requires a real admin login.</p>;
       case "classrooms":
         return <Classrooms {...props} />;
       case "timetable":

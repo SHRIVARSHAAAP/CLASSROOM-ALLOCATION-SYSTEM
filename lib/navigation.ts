@@ -1,6 +1,7 @@
 import type { Role } from "./types";
 export const pageLabels: Record<string, string> = {
   dashboard: "Dashboard",
+  accounts: "Accounts",
   classrooms: "Classrooms",
   timetable: "Class Timetables",
   "faculty-timetable": "Faculty Timetables",
@@ -28,6 +29,7 @@ export const navigation: Record<Role, string[]> = {
   admin: [
     "dashboard",
     "classrooms",
+    "accounts",
     "timetable",
     "faculty-timetable",
     "cancellations",
