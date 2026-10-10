@@ -191,7 +191,7 @@ export function move(
     { date: permission.date, start: session.start, end: session.end },
     {
       seats: session.seats,
-      resources: { projector: 1 },
+      resources: next.staffPool?.length ? {} : { projector: 1 },
       facultyId: session.facultyId,
       section: session.section,
       exclude: session.id,
@@ -245,7 +245,7 @@ export function makeup(
   if (!room) throw new Error("Room not found.");
   const errors = validate(next, room, slot, {
     seats: session.seats,
-    resources: { projector: 1 },
+    resources: next.staffPool?.length ? {} : { projector: 1 },
     facultyId: session.facultyId,
     section: session.section,
   });
@@ -475,7 +475,7 @@ export function publish(state: State, role: Role, rows: unknown): State {
     const recurring = { ...next, overrides: [], extras: [], bookings: [] };
     const errors = validate(recurring, room, slot, {
       seats: session.seats,
-      resources: { projector: 1 },
+      resources: next.staffPool?.length ? {} : { projector: 1 },
       facultyId: session.facultyId,
       section: session.section,
     });

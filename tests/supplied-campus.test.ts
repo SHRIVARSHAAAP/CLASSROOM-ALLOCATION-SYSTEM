@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import data from "../data/supplied-campus.json";
 import { blockers } from "../lib/availability";
-import { suggestions } from "../lib/engine";
+import { report, decide, makeup, move } from "../lib/workflows";
+import { rank, suggestions } from "../lib/engine";
 import type { State } from "../lib/types";
 const clock=(n:number)=>String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
 const state:State={
@@ -11,6 +12,22 @@ const state:State={
  staffPool:data.pool,requests:[],overrides:[],extras:[],bookings:[],notifications:[],audit:[],holidays:[],counter:0,
 };
 describe("supplied college timetable",()=>{
+ it("confirms suggested makeups and room changes without inventing projector requirements",()=>{
+ const session=state.sessions.find(s=>s.section==="2026-Z-G1"&&s.day===1&&s.roomId)!;
+ const date="2026-10-12";
+ const reported=report(state,"rep",{type:"cancellation",date,sessionId:session.id,reason:"Faculty meeting confirmed"},session.section,"CSE rep");
+ const approved=decide(reported,"admin",reported.requests[0].id,"approved","Confirmed cancellation",true);
+ const option=suggestions(approved,session,date)[0];expect(option).toBeDefined();
+ const confirmed=makeup(approved,"admin",reported.requests[0].id,option.room.id,option.slot);
+ expect(confirmed.extras).toHaveLength(1);expect(confirmed.sessions).toEqual(state.sessions);
+ expect(confirmed.notifications[0].roles).toEqual(expect.arrayContaining(["rep","faculty","student"]));
+ const permission=report(state,"rep",{type:"permission",date,sessionId:session.id,reason:"Need a replacement room"},session.section,"CSE rep");
+ const allowed=decide(permission,"admin",permission.requests[0].id,"approved","Room change approved");
+ const candidate=rank(allowed,{date,start:session.start,end:session.end},{seats:session.seats,resources:{},section:session.section,exclude:session.id}).find(r=>!r.failures.length&&r.room.id!==session.roomId)!;
+ expect(candidate).toBeDefined();const moved=move(allowed,"rep",permission.requests[0].id,candidate.room.id,session.section);
+ expect(moved.overrides[0].roomId).toBe(candidate.room.id);expect(moved.sessions).toEqual(state.sessions);
+ expect(moved.notifications[0].roles).toEqual(expect.arrayContaining(["rep","faculty","student"]));
+ });
  it("retains every section, real room and printed staff record",()=>{
   expect(data.sections).toHaveLength(22);expect(data.rooms).toHaveLength(55);expect(data.sessions).toHaveLength(568);expect(data.pool).toHaveLength(378);
   expect(new Set(data.rooms.map(r=>r.block)).size).toBe(13);
