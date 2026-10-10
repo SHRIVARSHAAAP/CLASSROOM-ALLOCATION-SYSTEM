@@ -36,8 +36,8 @@ export function effectiveSessions(state: State, date: string, user: User) {
         (!s.validFrom || date >= s.validFrom) && (!s.validTo || date <= s.validTo) &&
         (user.role === "admin" ||
           (user.role === "faculty"
-            ? s.facultyId === "F0"
-            : s.section === "CSE II A")),
+            ? s.facultyId === user.facultyId
+            : s.section === user.section)),
     )
     .map((session) => {
       const override = state.overrides.find(
@@ -218,7 +218,7 @@ export default function Dashboard({
                   <CalendarDays />
                   <h3>No classes today</h3>
                   <p>
-                    Your fixed weekly timetable is available in the sidebar.
+                    Your base weekly timetable is available in the sidebar. No teacher assignment is required. Saturdays and Sundays have no regular classes in the supplied timetable.
                   </p>
                 </div>
               )}

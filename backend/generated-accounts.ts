@@ -25,14 +25,7 @@ export async function setupPost(request:Request){
   const ready=await db.from("users").select("is_generated").limit(1);
   if(ready.error)throw new AppError(503,"Run the updated db/restore-supplied-campus.sql once, then try again.");
   if(input.offset===plan.accounts.length){
-   const profiles=await db.from("users").select("id,email,role,is_active").eq("role","faculty");
-   if(profiles.error)throw new AppError(503,"Cannot read faculty accounts.");
-   const byEmail=new Map(profiles.data.filter(p=>p.is_active).map(p=>[p.email.toLowerCase(),p.id]));
-   const assignments=plan.assignments.map(a=>({sessionId:a.sessionId,facultyId:byEmail.get(a.email)}));
-   if(assignments.some(a=>!a.facultyId))throw new AppError(409,"Faculty setup is incomplete. Start account setup again to finish missing accounts.");
-   const result=await db.rpc("campus_generated_setup",{actor_id:actor.id,assignments});
-   if(result.error)throw new AppError(409,"Could not apply generated room settings and staff assignments. Run the updated restore SQL, then retry setup. Existing schedules were preserved.");
-   return NextResponse.json({done:true,total:plan.accounts.length,assignments:result.data,accounts:[]},{headers:{"Cache-Control":"no-store"}});
+   return NextResponse.json({done:true,total:plan.accounts.length,accounts:[]},{headers:{"Cache-Control":"no-store"}});
   }
   const allAuth=[];
   for(let page=1;;page++){

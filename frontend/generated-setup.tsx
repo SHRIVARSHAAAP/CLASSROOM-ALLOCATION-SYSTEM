@@ -20,7 +20,7 @@ export default function GeneratedSetup(){
     const result=await response.json();
     if(!response.ok)throw new Error(result.error ?? "Setup failed. Resume to finish missing records.");
     rows=[...rows,...result.accounts];setAccounts(rows);
-    if(result.done){setMessage("Setup complete. "+result.assignments+" teaching entries assigned. Download the login list now; existing account passwords were unchanged.");setOffset(result.total);break;}
+    if(result.done){setMessage("Accounts created. The supplied base timetable is unchanged. Download the login list now; existing account passwords were unchanged.");setOffset(result.total);break;}
     next=result.nextOffset;setOffset(next);setMessage("Account setup: "+next+" / "+result.total+". Keep this page open.");
    }
   }catch(error){setMessage(error instanceof Error ? error.message : "Could not complete setup.");}
@@ -30,7 +30,7 @@ export default function GeneratedSetup(){
  <h2>Generate temporary campus accounts</h2>
  <p className="muted">Uses teacher names from your timetable and generated student/club names. Gmail addresses follow your requested format and are not verified contacts. Existing passwords are preserved. No emails or WhatsApp messages are sent.</p>
  <p className="muted">Generated room capacities and facilities are sample settings. Confirm them before actual use.</p>
- <button className="primary" disabled={busy} onClick={()=>void setup()}>{busy?"Creating accounts…":offset?"Resume / finish setup":"Create accounts and assign teachers"}</button>
+ <button className="primary" disabled={busy} onClick={()=>void setup()}>{busy?"Creating accounts…":offset?"Resume / finish setup":"Create temporary login accounts"}</button>
  {accounts.length>0 && <button className="secondary" onClick={()=>download("campus-login-accounts.csv",csv([["Name","Email","Portal","Roll number","Status","Password"],...accounts.map(a=>[a.name,a.email,a.role,a.rollNumber??"",a.status,a.password])]))}>Download private login list</button>}
  <p role="status">{message}</p>
  <p className="muted small">Keep the downloaded passwords private. Existing accounts keep their previous password; generated addresses cannot receive password-reset emails.</p>

@@ -60,7 +60,7 @@ export async function campusSnapshot() {
         subject: text(s, "subject"), section: text(s, "section_id"),
         department: text(sections.get(text(s, "section_id")), "department_id"),
         year: number(sections.get(text(s, "section_id")), "year"),
-        facultyId: text(s, "faculty_id"), faculty: text(users.get(text(s, "faculty_id")), "name") || "Faculty not assigned",
+        facultyId: text(s, "faculty_id"), faculty: text(users.get(text(s, "faculty_id")), "name") || "See course staff list",
         sessionType: text(s, "session_type") || "class", startPeriod: number(s, "start_period") || undefined,
         endPeriod: number(s, "end_period") || undefined, courseCodes: s.course_codes as string[] | undefined,
         seats: number(sections.get(text(s, "section_id")), "size"),
