@@ -9,13 +9,13 @@ export default function FacultyPool({state,query=""}:{state:State;query?:string}
  }
  if(!staff.size)return null;
  return <div className="timetable-tables">
- <p className="info-note">The college PDF lists staff by course. Individual teaching periods are not assigned in the source. Assigned teaching schedules appear above; these tables preserve the original course lists.</p>
+ <p className="info-note">The college PDF lists staff by course. Individual teaching periods are not assigned in the source. The timetable above shows periods for listed courses; these tables preserve the original staff lists.</p>
  {Array.from(staff.entries()).sort(([a],[b])=>a.localeCompare(b)).map(([name,courses])=>
  <section className="panel" key={name}><h2>{name}</h2>
  <div className="table-wrap" role="region" aria-label={name+" course list"} tabIndex={0}>
  <table className="compact-timetable"><caption>Courses listed in the original timetable</caption>
  <thead><tr><th scope="col">Class</th><th scope="col">Course code</th><th scope="col">Course</th><th scope="col">Teaching periods</th></tr></thead>
- <tbody>{courses.map(c=><tr key={c.section+"-"+c.courseCode}><td>{c.section}</td><td>{c.courseCode}</td><td>{c.courseTitle}</td><td>Not assigned in source</td></tr>)}</tbody>
+ <tbody>{courses.map(c=><tr key={c.section+"-"+c.courseCode}><td>{c.section}</td><td>{c.courseCode}</td><td>{c.courseTitle}</td><td>{state.sessions.filter(s=>s.section===c.section && s.courseCodes?.includes(c.courseCode)).map(s=>["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][s.day]+" "+s.start+"–"+s.end+" · "+(state.rooms.find(r=>r.id===s.roomId)?.number ?? "Room not specified")).join("; ") || "No periods listed"}</td></tr>)}</tbody>
  </table></div></section>)}
  </div>;
 }

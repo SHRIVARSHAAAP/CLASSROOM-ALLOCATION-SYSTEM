@@ -1187,7 +1187,7 @@ export function Classrooms({ state, action, busy }: FeatureProps) {
 }
 export function Timetable({ state, user, action, busy, facultyView = false }: FeatureProps & { facultyView?: boolean }) {
   const [date, setDate] = useState(today()),
-    [weekly, setWeekly] = useState(true),
+    [weekly, setWeekly] = useState(user.role !== "faculty"),
     [filter, setFilter] = useState("");
   const [groupBy, setGroupBy] = useState<"section" | "faculty">(
     facultyView || user.role === "faculty" ? "faculty" : "section",
@@ -1381,6 +1381,7 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
           Export
         </button>
       </div>
+      {user.role === "faculty" && <p className="info-note">Class periods for {user.name}’s courses from the supplied base timetable. These are course references; the PDF does not identify a single teacher for each period. Choose a weekday to see scheduled classes.</p>}
       <TimetableTables
         rows={weekly ? scope : dailyRows}
         state={state}
