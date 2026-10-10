@@ -575,7 +575,7 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
     [end, setEnd] = useState("17:00");
   const [participants, setParticipants] = useState(40),
     [roomId, setRoomId] = useState(""),
-    [projector, setProjector] = useState(true);
+    [projector, setProjector] = useState(false);
   const slot = { date, start, end };
   const valid = slotSchema.safeParse(slot);
   const needs = useMemo<Needs>(
@@ -585,18 +585,15 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
     }),
     [participants, projector],
   );
-  const suitable = valid.success
-    ? state.rooms.filter(
-        (r) =>
-          !rank({ ...state, rooms: [r] }, valid.data, needs)[0].failures.length,
-      )
-    : [];
+  const suitable = valid.success ? rank(state, valid.data, needs).filter(candidate => !candidate.failures.length).map(candidate => candidate.room) : [];
+  const selectedSuitable = suitable.some(room => room.id === roomId);
+  const hasRecordedProjector = state.rooms.some(room => room.active && (room.resources.projector ?? 0) > 0);
   return (
     <>
       <section className="panel">
         <h2>Plan your next club event</h2>
         <p className="muted">
-          Create the booking, print the Program Coordinator letter and upload a sample signed
+          Create the booking, print the Program Coordinator letter and upload the signed
           copy before admin review.
         </p>
         <form
@@ -650,9 +647,10 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
                 min={1}
                 max={1000}
                 value={participants}
-                onChange={(event) =>
-                  setParticipants(Number(event.target.value))
-                }
+                onChange={(event) => {
+                  setParticipants(Number(event.target.value));
+                  setRoomId("");
+                }}
               />
             </label>
             <label>
@@ -704,6 +702,7 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
               </select>
             </label>
           </div>
+          <p className="muted small" role="status">{!valid.success ? "Enter a valid date and an end time after the start time." : suitable.length ? `${suitable.length} suitable classrooms for this time and participant count.` : projector && !hasRecordedProjector ? "No classrooms have a working projector recorded. If your event does not require one, uncheck Working projector required. Otherwise ask Admin to confirm room facilities." : "No classrooms meet these requirements for the selected time. Try another time, participant count or facility requirement."}</p>
           <label>
             Purpose
             <textarea
@@ -719,11 +718,11 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
             <input
               type="checkbox"
               checked={projector}
-              onChange={(event) => setProjector(event.target.checked)}
+              onChange={(event) => { setProjector(event.target.checked); setRoomId(""); }}
             />
             Working projector required
           </label>
-          <button className="primary" disabled={busy || !valid.success}>
+          <button className="primary" disabled={busy || !valid.success || !selectedSuitable}>
             Create booking &amp; Program Coordinator letter
           </button>
         </form>

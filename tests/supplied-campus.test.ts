@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import data from "../data/supplied-campus.json";
 import { blockers } from "../lib/availability";
-import { report, decide, makeup, move } from "../lib/workflows";
+import { book, report, decide, makeup, move } from "../lib/workflows";
 import { rank, suggestions } from "../lib/engine";
 import type { State } from "../lib/types";
 const clock=(n:number)=>String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
@@ -12,6 +12,15 @@ const state:State={
  staffPool:data.pool,requests:[],overrides:[],extras:[],bookings:[],notifications:[],audit:[],holidays:[],counter:0,
 };
 describe("supplied college timetable",()=>{
+ it("offers club rooms without a projector but enforces an explicit projector requirement",()=>{
+ const slot={date:"2026-10-14",start:"16:00",end:"17:00"};
+ const options=rank(state,slot,{seats:40,resources:{projector:0}}).filter(candidate=>!candidate.failures.length);
+ expect(options.length).toBeGreaterThan(0);
+ expect(rank(state,slot,{seats:40,resources:{projector:1}}).filter(candidate=>!candidate.failures.length)).toHaveLength(0);
+ const created=book(state,"club",{...slot,club:"The Eye",organizer:"Varsha",department:"CSE",coordinator:"Prithi",event:"Commitcon",purpose:"Student technical event",participants:40,roomId:options[0].room.id,resources:{projector:0}});
+ expect(created.bookings[0].roomId).toBe(options[0].room.id);
+ expect(created.bookings[0].status).toBe("awaiting_hod_signature");
+ });
  it("confirms suggested makeups and room changes without inventing projector requirements",()=>{
  const session=state.sessions.find(s=>s.section==="2026-Z-G1"&&s.day===1&&s.roomId)!;
  const date="2026-10-12";
