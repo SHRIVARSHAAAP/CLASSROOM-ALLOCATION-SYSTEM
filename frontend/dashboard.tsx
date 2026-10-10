@@ -35,8 +35,8 @@ export function effectiveSessions(state: State, date: string, user: User) {
         s.day === day &&
         (user.role === "admin" ||
           (user.role === "faculty"
-            ? s.facultyId === "F0"
-            : s.section === "CSE II A")),
+            ? s.facultyId === user.facultyId
+            : s.section === user.section)),
     )
     .map((session) => {
       const override = state.overrides.find(

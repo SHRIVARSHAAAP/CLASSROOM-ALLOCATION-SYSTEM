@@ -2061,3 +2061,33 @@ td small {
 .student-room-details {
   margin-top: 20px;
 }
+
+.timetable-tables {
+  display: grid;
+  gap: 16px;
+}
+.compact-timetable {
+  width: 100%;
+}
+.compact-timetable caption {
+  text-align: left;
+  padding: 8px 0 12px;
+  color: var(--muted);
+}
+.compact-timetable td,
+.compact-timetable th {
+  vertical-align: top;
+  padding: 10px;
+}
+.timetable-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 110px;
+}
+.compact-timetable td small {
+  display: block;
+}
+.timetable-tables .table-wrap:focus-visible {
+  outline: 3px solid #0e7c7b;
+  outline-offset: 3px;
+}

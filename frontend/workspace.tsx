@@ -53,6 +53,7 @@ const icons: Record<string, typeof Building2> = {
   dashboard: LayoutDashboard,
   classrooms: Building2,
   timetable: CalendarDays,
+  "faculty-timetable": CalendarDays,
   cancellations: ClipboardCheck,
   issues: ClipboardCheck,
   rescheduling: CalendarDays,
@@ -267,7 +268,9 @@ export default function Workspace({
       case "classrooms":
         return <Classrooms {...props} />;
       case "timetable":
-        return <Timetable {...props} />;
+        return <Timetable key="class-timetable" {...props} />;
+      case "faculty-timetable":
+        return <Timetable key="faculty-timetable" {...props} facultyView />;
       case "cancellations":
         return <Requests {...props} kind="cancellation" />;
       case "issues":
