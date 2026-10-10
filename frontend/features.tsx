@@ -481,7 +481,7 @@ export function ChangeRoom({ state, action, busy }: FeatureProps) {
     permission && session
       ? { date: permission.date, start: session.start, end: session.end }
       : null;
-  const needs = useMemo(
+  const needs = useMemo<Needs | undefined>(
     () =>
       session
         ? {
@@ -493,7 +493,7 @@ export function ChangeRoom({ state, action, busy }: FeatureProps) {
             block: state.rooms.find((r) => r.id === session.roomId)?.block,
           }
         : undefined,
-    [session, state.rooms],
+    [session, state.rooms, state.staffPool?.length],
   );
   const options =
     slot && needs
