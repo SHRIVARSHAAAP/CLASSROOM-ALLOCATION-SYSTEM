@@ -53,3 +53,26 @@ Temporary Vercel CLI deployments must be claimed through the privately supplied 
 4. Integrate real workflow handlers and synchronized dated occupancy transactions. Test race conditions and authorization against the configured database.
 5. Configure private storage, account recovery redirect URLs and provider templates/consent.
 6. Disable demo mode, verify all live flows and confirm that the service-role key is absent from browser bundles.
+
+## Supabase live integration
+
+The website now has separate real-data APIs:
+- GET /api/campus loads shared PostgreSQL records; POST validates authenticated actions against server-loaded data.
+- A server-only RPC serializes writes and rebuilds dated occupancy inside the transaction. Exclusion constraints reject concurrent room/faculty/section overlaps.
+- Letter uploads are validated by MIME, magic bytes and decoded size, saved to the private campus-private bucket, and served to the owner/admin with five-minute signed URLs.
+- Real mode never initializes browser sample records. Account roles, section IDs, faculty UUIDs and club_permission come from users.
+- Public key aliases: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY. Server key: SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY. No server key is sent to the browser.
+
+Setup for the existing Supabase project:
+1. Apply db/live-integration.sql in SQL Editor after the original schema.
+2. Confirm the admin Auth user has an active admin profile.
+3. Keep NEXT_PUBLIC_DEMO=true until the migration succeeds; then change it to false in Vercel and redeploy.
+4. Use the real admin email/password. An empty database displays empty tables, never fictional timetable data.
+5. Create real section records and actual faculty/rep/student/club accounts. Link the accounts to users; set roll numbers uppercase, assign section_id, and enable club_permission only for approved organizers.
+6. Add verified room capacities and working facilities in Admin. Import the real timetable CSV with existing section IDs, exact faculty names, actual room codes and IST times.
+7. Verify login for all roles, cancellation approval, single-use rep permissions, makeup confirmation, signed-letter upload and approval from separate browsers.
+
+Do not execute db/test-foundation.sql or db/test-live.sql on the real project: these are disposable CI fixtures.
+Do not copy the browser demo into production. The old seed script creates fictional sample records and is not a production import.
+WhatsApp is not connected; database delivery records explicitly show no delivery. Real WhatsApp provider setup remains separate.
+Before enabling real users, verify the flows against the configured Supabase project. CI checks use an isolated PostgreSQL instance, not the user's live database.

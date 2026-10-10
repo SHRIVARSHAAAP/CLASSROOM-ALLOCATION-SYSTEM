@@ -36,7 +36,6 @@ import {
   type User,
 } from "@/lib/types";
 import Rooms, { facilities } from "./rooms";
-import TimetableTables, { type TimetableRow } from "./timetable-tables";
 import { effectiveSessions, Tag } from "./dashboard";
 
 export type FeatureProps = {
@@ -768,7 +767,7 @@ function BookingCard({
         action: "upload",
         file: { name: file.name, data, size: file.size, type: file.type },
       },
-      "Signed letter submitted to the admin demo portal.",
+      "Signed letter submitted for admin review.",
     );
   }
   const room = state.rooms.find((r) => r.id === booking.roomId);
@@ -830,7 +829,7 @@ function BookingCard({
                 );
             }}
           />
-          <small>Sample files only · up to 2 MB · saved in this browser</small>
+          <small>PDF, JPG or PNG · up to 2 MB</small>
         </label>
       )}
       {booking.file && (
@@ -1183,13 +1182,10 @@ export function Classrooms({ state, action, busy }: FeatureProps) {
     </>
   );
 }
-export function Timetable({ state, user, action, busy, facultyView = false }: FeatureProps & { facultyView?: boolean }) {
+export function Timetable({ state, user, action, busy }: FeatureProps) {
   const [date, setDate] = useState(today()),
-    [weekly, setWeekly] = useState(true),
+    [weekly, setWeekly] = useState(false),
     [filter, setFilter] = useState("");
-  const [groupBy, setGroupBy] = useState<"section" | "faculty">(
-    facultyView || user.role === "faculty" ? "faculty" : "section",
-  );
   const [preview, setPreview] = useState<Session[]>([]),
     [error, setError] = useState("");
   const scope = state.sessions
@@ -1197,8 +1193,8 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
       (s) =>
         user.role === "admin" ||
         (user.role === "faculty"
-          ? s.facultyId === user.facultyId
-          : s.section === user.section),
+          ? s.facultyId === "F0"
+          : s.section === "CSE II A"),
     )
     .filter(
       (s) =>
@@ -1266,7 +1262,7 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
             section: cell("section"),
             subject: cell("subject"),
             faculty: cell("faculty"),
-            facultyId: known?.facultyId ?? "import-" + cell("faculty"),
+            facultyId: known?.facultyId ?? state.faculty?.find((f) => f.name === cell("faculty"))?.id ?? "import-" + cell("faculty"),
             day: Number(cell("day")),
             start: cell("start"),
             end: cell("end"),
@@ -1283,40 +1279,9 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
   const daily = effectiveSessions(state, date, user).filter((s) =>
     scope.some((row) => row.id === s.id),
   );
-  const dailyRows: TimetableRow[] = [
-    ...daily.map((row) => ({ ...row, reason: row.override?.reason })),
-    ...state.extras.filter((extra) =>
-      extra.kind === "makeup" && extra.date === date &&
-      (user.role === "admin" || (user.role === "faculty"
-        ? extra.facultyId === user.facultyId
-        : extra.section === user.section)),
-    ).map((extra) => {
-      const request = state.requests.find((r) => "makeup-" + r.id === extra.id);
-      const original = state.sessions.find((s) => s.id === request?.sessionId);
-      return {
-        id: extra.id,
-        day: new Date(date + "T12:00:00Z").getUTCDay(),
-        start: extra.start, end: extra.end, roomId: extra.roomId,
-        subject: extra.title, section: extra.section ?? original?.section ?? "Unassigned",
-        facultyId: extra.facultyId ?? original?.facultyId ?? "",
-        faculty: original?.faculty ?? state.sessions.find((s) => s.facultyId === extra.facultyId)?.faculty ?? "Unassigned",
-        status: "makeup",
-      };
-    }).filter((row) => !filter || [row.subject, row.section, row.faculty,
-      state.rooms.find((r) => r.id === row.roomId)?.number ?? ""].join(" ").toLowerCase().includes(filter.toLowerCase())),
-  ];
   return (
     <>
       <div className="toolbar">
-        {user.role === "admin" && (
-          <label>
-            Group timetable by
-            <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as "section" | "faculty")}>
-              <option value="section">Class</option>
-              <option value="faculty">Faculty</option>
-            </select>
-          </label>
-        )}
         <div className="tabs">
           <button
             className={!weekly ? "selected" : ""}
@@ -1379,13 +1344,89 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
           Export
         </button>
       </div>
-      <TimetableTables
-        rows={weekly ? scope : dailyRows}
-        state={state}
-        weekly={weekly}
-        groupBy={groupBy}
-        date={date}
-      />
+      {weekly ? (
+        <div className="week-columns">
+          {[
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ].map((day, i) => (
+            <section className="panel" key={day}>
+              <h3>{day}</h3>
+              {scope
+                .filter((s) => s.day === i + 1)
+                .map((s) => (
+                  <article key={s.id}>
+                    <small>
+                      {s.start}–{s.end}
+                    </small>
+                    <strong>{s.subject}</strong>
+                    <p>
+                      {s.section} ·{" "}
+                      {state.rooms.find((r) => r.id === s.roomId)?.number}
+                    </p>
+                  </article>
+                ))}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <section className="panel">
+          {daily.map((s) => (
+            <article className="simple-row" key={s.id}>
+              <div>
+                <strong>{s.subject}</strong>
+                <p>
+                  {s.start}–{s.end} · {s.faculty} · {s.section} ·{" "}
+                  {state.rooms.find((r) => r.id === s.roomId)?.number}
+                </p>
+                {s.override && (
+                  <p
+                    className={
+                      s.status === "cancelled" ? "error-note" : "muted"
+                    }
+                  >
+                    {s.override.reason} · reported by {s.override.reporter} ·
+                    approved by {s.override.approver}
+                  </p>
+                )}
+              </div>
+              <Tag status={s.status} />
+            </article>
+          ))}
+          {state.extras
+            .filter(
+              (e) =>
+                e.kind === "makeup" &&
+                e.date === date &&
+                (user.role === "admin" ||
+                  (user.role === "faculty"
+                    ? e.facultyId === "F0"
+                    : e.section === "CSE II A")),
+            )
+            .map((e) => (
+              <article className="simple-row" key={e.id}>
+                <div>
+                  <strong>{e.title}</strong>
+                  <p>
+                    {e.start}–{e.end} ·{" "}
+                    {state.rooms.find((r) => r.id === e.roomId)?.number}
+                  </p>
+                </div>
+                <Tag status="makeup" />
+              </article>
+            ))}
+          {!daily.length && (
+            <Empty
+              title="No recurring classes today"
+              text="Check the weekly timetable for upcoming sessions."
+            />
+          )}
+        </section>
+      )}
       <p className="muted small">
         One-day cancellations and changes never overwrite the fixed recurring
         timetable.
@@ -1509,7 +1550,7 @@ export function Notifications({ state, user, save }: FeatureProps) {
               </small>
               {user.role === "admin" && (
                 <p className="muted small">
-                  WhatsApp: not sent — delivery is not connected
+                  WhatsApp: skipped — no consent / live provider connected
                 </p>
               )}
             </div>

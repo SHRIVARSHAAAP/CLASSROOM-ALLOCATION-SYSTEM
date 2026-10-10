@@ -53,12 +53,14 @@ export function report(
   state: State,
   role: Role,
   input: z.input<typeof requestInput>,
+  section = "CSE II A",
+  reporter = "CSE Class Rep",
 ): State {
   authorize(role, ["rep"]);
   const data = requestInput.parse(input);
   slotSchema.parse({ date: data.date, start: "00:00", end: "23:59" });
   const session = state.sessions.find(
-    (s) => s.id === data.sessionId && s.section === "CSE II A",
+    (s) => s.id === data.sessionId && s.section === section,
   );
   if (
     !session ||
@@ -85,7 +87,7 @@ export function report(
   const request: Request = {
     ...data,
     id: crypto.randomUUID(),
-    reporter: "CSE Class Rep",
+    reporter,
     status: "pending",
   };
   next.requests.unshift(request);
@@ -157,6 +159,7 @@ export function move(
   role: Role,
   permissionId: string,
   roomId: string,
+  section = "CSE II A",
 ): State {
   authorize(role, ["rep"]);
   const next = structuredClone(state);
@@ -171,7 +174,7 @@ export function move(
   )
     throw new Error("Permission is missing, expired or already used.");
   const session = next.sessions.find(
-    (s) => s.id === permission.sessionId && s.section === "CSE II A",
+    (s) => s.id === permission.sessionId && s.section === section,
   );
   const room = next.rooms.find((r) => r.id === roomId);
   if (!session || !room) throw new Error("Class or room not found.");

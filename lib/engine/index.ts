@@ -78,6 +78,9 @@ export function suggestions(
 ) {
   const results: { room: Room; slot: Slot; score: number; why: string }[] = [];
   const block = state.rooms.find((room) => room.id === session.roomId)?.block;
+  const toMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+  const duration = toMinutes(session.end) - toMinutes(session.start);
+  if (duration <= 0) return [];
   let searched = 0;
   for (let offset = 1; searched < 14 && offset < 60; offset++) {
     const date = nextDate(cancelledDate, offset);
@@ -88,10 +91,12 @@ export function suggestions(
       continue;
     searched++;
     for (const hour of [9, 10, 11, 13, 14, 15, 16]) {
+      const endMinute = hour * 60 + duration;
+      if (endMinute > 17 * 60 || (hour < 13 && endMinute > 12 * 60)) continue;
       const slot = {
         date,
         start: `${String(hour).padStart(2, "0")}:00`,
-        end: `${String(hour + 1).padStart(2, "0")}:00`,
+        end: `${String(Math.floor(endMinute / 60)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`,
       };
       const candidate = rank(state, slot, {
         seats: session.seats,

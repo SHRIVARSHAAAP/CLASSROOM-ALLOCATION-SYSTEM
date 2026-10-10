@@ -3,13 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 export async function middleware(request: NextRequest) {
   if (process.env.NEXT_PUBLIC_DEMO === "true") {
     if (!request.cookies.has("campus_demo"))
-      return NextResponse.redirect(new URL("/login/student", request.url));
+      return request.nextUrl.pathname.startsWith("/api/")
+        ? NextResponse.json({ error: "Sign in to continue." }, { status: 401 })
+        : NextResponse.redirect(new URL("/login/student", request.url));
     return NextResponse.next();
   }
   const access = request.cookies.get("campus_access")?.value;
   const refresh = request.cookies.get("campus_refresh")?.value;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
-    key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   let expires = 0;
   try {
     expires = JSON.parse(
@@ -52,4 +54,4 @@ export async function middleware(request: NextRequest) {
     ? NextResponse.next()
     : NextResponse.redirect(new URL("/login/student", request.url));
 }
-export const config = { matcher: ["/portal/:path*"], runtime: "nodejs" };
+export const config = { matcher: ["/portal/:path*", "/api/campus/:path*"], runtime: "nodejs" };

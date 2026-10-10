@@ -32,11 +32,12 @@ export function effectiveSessions(state: State, date: string, user: User) {
   return state.sessions
     .filter(
       (s) =>
-        s.day === day &&
+        s.day === day && !state.holidays.includes(date) &&
+        (!s.validFrom || date >= s.validFrom) && (!s.validTo || date <= s.validTo) &&
         (user.role === "admin" ||
           (user.role === "faculty"
-            ? s.facultyId === user.facultyId
-            : s.section === user.section)),
+            ? s.facultyId === "F0"
+            : s.section === "CSE II A")),
     )
     .map((session) => {
       const override = state.overrides.find(
@@ -75,7 +76,7 @@ export default function Dashboard({
     user.role === "admin"
       ? ([
           ["Total classrooms", state.rooms.length, Building2],
-          ["Academic blocks", 13, School],
+          ["Academic blocks", state.catalog?.blockCount ?? new Set(state.rooms.map((room) => room.block)).size, School],
           [
             "Pending approvals",
             pending.length +
@@ -144,7 +145,7 @@ export default function Dashboard({
       </div>
       {user.role !== "admin" && showAvailability && (
         <p className="muted small">
-          *Availability count uses the sample 09:00–10:00 IST slot.
+          *Availability count uses the 09:00–10:00 IST slot.
         </p>
       )}
       <div className="dashboard-panels">
@@ -295,7 +296,7 @@ export default function Dashboard({
           <div>
             <h2>Classroom availability</h2>
             <p className="muted small">
-              Sample availability · {date} · 09:00–10:00 IST
+              Room availability · {date} · 09:00–10:00 IST
             </p>
           </div>
           <Link

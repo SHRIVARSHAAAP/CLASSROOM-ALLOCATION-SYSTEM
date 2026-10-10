@@ -22,6 +22,7 @@ export type User = {
   section?: string;
   facultyId?: string;
   isActive: boolean;
+  clubPermission?: boolean;
 };
 export type Room = {
   id: string;
@@ -47,6 +48,8 @@ export type Session = {
   facultyId: string;
   faculty: string;
   seats: number;
+  validFrom?: string;
+  validTo?: string;
 };
 export type Override = {
   sessionId: string;
@@ -129,6 +132,9 @@ export type State = {
   counter: number;
   holidays: string[];
   mapImage?: string;
+  catalog?: { blockCount: number; sectionCount: number };
+  faculty?: { id: string; name: string }[];
+  sections?: { id: string; department: string; year: number; size: number }[];
 };
 export const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const dateSchema = z

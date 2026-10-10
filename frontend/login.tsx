@@ -229,9 +229,9 @@ export default function Login({ role, demo }: { role: Role; demo: boolean }) {
           >
             <h2 id="terms-title">Terms &amp; Conditions</h2>
             <p>
-              This student-project preview uses sample campus records. Demo
-              actions stay in your browser and do not reserve real college
-              rooms. Use fictitious information and sample letters.
+              {demo
+                ? "This preview uses sample records. Demo changes stay in your browser. Use fictitious information and sample letters."
+                : "Use your administrator-provided campus account. Booking requests require approval. Submitted letters are stored privately and can be reviewed by authorized administrators."}
             </p>
             <button
               className="primary"

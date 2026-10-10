@@ -84,8 +84,8 @@ export function sampleUser(role: Role): User {
 export function supabase(server = false) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = server
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY
-    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    ? (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY);
   if (!url || !key)
     throw new AppError(503, "Live Supabase authentication is not configured.");
   return createClient(url, key, {
@@ -104,7 +104,7 @@ export async function currentUser(): Promise<User | null> {
   if (auth.error || !auth.data.user) return null;
   const { data } = await supabase(true)
     .from("users")
-    .select("id,name,role,section_id,is_active")
+    .select("id,name,role,section_id,is_active,club_permission")
     .eq("id", auth.data.user.id)
     .maybeSingle();
   if (!data?.is_active) return null;
@@ -112,7 +112,9 @@ export async function currentUser(): Promise<User | null> {
     id: data.id,
     name: data.name,
     role: roleSchema.parse(data.role),
-    section: data.section_id,
+    section: data.section_id ?? undefined,
+    facultyId: data.role === "faculty" ? data.id : undefined,
+    clubPermission: data.club_permission,
     isActive: true,
   };
 }

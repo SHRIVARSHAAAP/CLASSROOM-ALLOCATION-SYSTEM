@@ -19,3 +19,33 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: campus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci-only-password
+      PGDATABASE: campus_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify schema, transactions and access guards
+        run: |
+          psql -v ON_ERROR_STOP=1 -f db/test-foundation.sql
+          psql -v ON_ERROR_STOP=1 -f db/schema.sql
+          psql -v ON_ERROR_STOP=1 -f db/live-integration.sql
+          psql -v ON_ERROR_STOP=1 -f db/test-live.sql

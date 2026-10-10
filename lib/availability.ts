@@ -15,7 +15,7 @@ export function occupancy(state: State, date: string): Extra[] {
   slotSchema.parse({ date, start: "00:00", end: "23:59" });
   const day = new Date(date + "T12:00:00Z").getUTCDay();
   const recurring: Extra[] = state.sessions
-    .filter((s) => s.day === day)
+    .filter((s) => s.day === day && !state.holidays.includes(date) && (!s.validFrom || date >= s.validFrom) && (!s.validTo || date <= s.validTo))
     .flatMap((session) => {
       const change = state.overrides.find(
         (o) => o.sessionId === session.id && o.date === date,

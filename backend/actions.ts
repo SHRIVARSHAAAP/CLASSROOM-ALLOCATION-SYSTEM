@@ -146,7 +146,7 @@ const stateSchema = z.object({
   holidays: z.array(z.string()),
   mapImage: z.string().optional(),
 });
-const actionSchema = z.discriminatedUnion("type", [
+export const actionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("report"),
     kind: z.enum(["cancellation", "issue", "permission"]),
@@ -212,20 +212,28 @@ export async function act(request: Request) {
     const body = await request.json();
     const state = stateSchema.parse(body.state) as State;
     const action = actionSchema.parse(body.action);
-    let result: State;
-    switch (action.type) {
+    const result = await applyAction(state, user.role, action);
+    return NextResponse.json({ state: result });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function applyAction(state: State, role: import("@/lib/types").Role, action: DemoAction, context?: import("@/lib/types").User): Promise<State> {
+  let result: State;
+  switch (action.type) {
       case "report":
-        result = report(state, user.role, {
+        result = report(state, role, {
           type: action.kind,
           sessionId: action.sessionId,
           date: action.date,
           reason: action.reason,
-        });
+        }, context?.section, context?.name);
         break;
       case "decide":
         result = decide(
           state,
-          user.role,
+          role,
           action.id,
           action.status,
           action.note,
@@ -233,12 +241,12 @@ export async function act(request: Request) {
         );
         break;
       case "move":
-        result = move(state, user.role, action.permissionId, action.roomId);
+        result = move(state, role, action.permissionId, action.roomId, context?.section);
         break;
       case "makeup":
         result = makeup(
           state,
-          user.role,
+          role,
           action.requestId,
           action.roomId,
           action.slot,
@@ -246,13 +254,13 @@ export async function act(request: Request) {
         break;
       case "book": {
         const { bookingInput } = await import("@/lib/workflows");
-        result = book(state, user.role, bookingInput.parse(action.data));
+        result = book(state, role, bookingInput.parse(action.data));
         break;
       }
       case "booking":
         result = bookingAction(
           state,
-          user.role,
+          role,
           action.id,
           action.action,
           action.note,
@@ -262,21 +270,19 @@ export async function act(request: Request) {
       case "maintenance":
         result = maintenance(
           state,
-          user.role,
+          role,
           action.roomId,
           action.slot,
           action.reason,
         );
         break;
       case "publish":
-        result = publish(state, user.role, action.rows);
+        result = publish(state, role, action.rows);
         break;
       case "room":
-        result = editRoom(state, user.role, action.room as Room);
+        result = editRoom(state, role, action.room as Room);
         break;
     }
-    return NextResponse.json({ state: result });
-  } catch (error) {
-    return failure(error);
-  }
+
+  return result;
 }

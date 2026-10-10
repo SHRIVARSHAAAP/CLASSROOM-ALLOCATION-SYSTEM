@@ -102,8 +102,34 @@ export default function Workspace({
     [busy, setBusy] = useState(false),
     [feedback, setFeedback] = useState(""),
     [error, setError] = useState("");
+  async function refreshLive() {
+    const response = await fetch("/api/campus", { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to load campus data.");
+    setState(result.state);
+  }
   useEffect(() => {
-    if (!demo) return;
+    if (!demo) {
+      let disposed = false;
+      let running = false;
+      async function loadLive() {
+        if (running) return;
+        running = true;
+        try {
+          const response = await fetch("/api/campus", { cache: "no-store" });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Unable to load campus data.");
+          if (!disposed) setState(result.state);
+        } catch (error) {
+          if (!disposed) setError(error instanceof Error ? error.message : "Unable to load campus data.");
+        } finally { running = false; }
+      }
+      void loadLive();
+      const timer = window.setInterval(() => void loadLive(), 30000);
+      const focused = () => void loadLive();
+      window.addEventListener("focus", focused);
+      return () => { disposed = true; window.clearInterval(timer); window.removeEventListener("focus", focused); };
+    }
     function load() {
       try {
         const raw = localStorage.getItem(SAMPLE_KEY);
@@ -124,13 +150,23 @@ export default function Workspace({
     };
     window.addEventListener("storage", changed);
     return () => window.removeEventListener("storage", changed);
-  }, [demo]);
+  }, [demo, user.id]);
   useEffect(() => {
     setMenu(false);
     setError("");
     setFeedback("");
   }, [view]);
   function save(next: State) {
+    if (!demo) {
+      void fetch("/api/campus/notifications", { method: "POST" })
+        .then(async (response) => {
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error);
+          setState(result.state);
+        })
+        .catch((error) => setError(error instanceof Error ? error.message : "Unable to save."));
+      return;
+    }
     try {
       localStorage.setItem(SAMPLE_KEY, JSON.stringify(next));
       setState(next);
@@ -149,21 +185,18 @@ export default function Workspace({
     setError("");
     setFeedback("");
     try {
-      const raw = localStorage.getItem(SAMPLE_KEY);
+      const raw = demo ? localStorage.getItem(SAMPLE_KEY) : null;
       const parsed: unknown = raw ? JSON.parse(raw) : null;
-      const response = await fetch("/api/demo/action", {
+      const response = await fetch(demo ? "/api/demo/action" : "/api/campus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          state: validState(parsed) ? parsed : state,
-          action: input,
-        }),
+        body: JSON.stringify(demo ? { state: validState(parsed) ? parsed : state, action: input } : { action: input }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      localStorage.setItem(SAMPLE_KEY, JSON.stringify(result.state));
+      if (demo) localStorage.setItem(SAMPLE_KEY, JSON.stringify(result.state));
       setState(result.state);
-      setFeedback(message);
+      setFeedback(demo ? message : "Saved to the shared campus database.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save this change.");
     } finally {
@@ -212,23 +245,13 @@ export default function Workspace({
       (n) => n.roles.includes(user.role) && !n.read.includes(user.role),
     ).length ?? 0;
   function content() {
-    if (!demo)
-      return (
-        <section className="panel">
-          <h2>Live workflow connection is pending</h2>
-          <p>
-            The current interactive workflows are demonstrated with sample
-            records. Configure and integrate Supabase before using real campus
-            records.
-          </p>
-        </section>
-      );
     if (!props)
       return (
         <div className="empty-state">
           <Building2 />
-          <h2>Loading your campus workspace…</h2>
-          <p>Preparing the sample timetable and classrooms.</p>
+          <h2>{error ? "Campus data could not load" : "Loading your campus workspace…"}</h2>
+          <p>{demo ? "Preparing the sample timetable and classrooms." : "Loading shared campus records."}</p>
+          {!demo && <button className="secondary" onClick={() => void refreshLive().then(() => setError("")).catch((error) => setError(error.message))}>Retry</button>}
         </div>
       );
     switch (view) {
@@ -245,7 +268,7 @@ export default function Workspace({
             state={props.state}
             map
             image={
-              user.role === "admin"
+              demo && user.role === "admin"
                 ? async (file) => {
                     if (
                       !["image/png", "image/jpeg"].includes(file.type) ||
@@ -432,10 +455,10 @@ export default function Workspace({
           </div>
         </header>
         <section className="workspace-content">
-          <div className="preview-notice">
+          {demo && <div className="preview-notice">
             <span>DEMO</span>Sample campus records · changes stay in this
             browser · no real room reservations or WhatsApp messages
-          </div>
+          </div>}
           <div className="page-title">
             <div>
               <h1>
@@ -451,7 +474,7 @@ export default function Workspace({
                   : "Keep your campus spaces and day-to-day changes organized."}
               </p>
             </div>
-            <span className="sample-pill">SAMPLE DATA</span>
+            {demo && <span className="sample-pill">SAMPLE DATA</span>}
           </div>
           {(error || feedback) && (
             <div
@@ -472,7 +495,7 @@ export default function Workspace({
           )}
           {content()}
           <footer className="workspace-footer">
-            <span>PSG Smart Campus · Fresh rebuild</span>
+            <span>PSG Smart Campus</span>
             <span>Fixed timetable. Flexible changes.</span>
           </footer>
         </section>
