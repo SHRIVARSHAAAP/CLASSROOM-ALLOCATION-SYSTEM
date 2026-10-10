@@ -151,7 +151,7 @@ export function decide(
     before,
     request,
     request.type === "cancellation" ? ["rep", "faculty", "student"] : ["rep"],
-    `${request.date}. Reason: ${request.reason}. Admin: ${note}`,
+    `${next.sessions.find(s => s.id === request.sessionId)?.subject ?? "Class"} · ${next.sessions.find(s => s.id === request.sessionId)?.section ?? ""} · ${request.date} · ${next.sessions.find(s => s.id === request.sessionId)?.start ?? ""}–${next.sessions.find(s => s.id === request.sessionId)?.end ?? ""} IST · room ${next.rooms.find(r => r.id === next.sessions.find(s => s.id === request.sessionId)?.roomId)?.number ?? "not specified"}. Reason: ${request.reason}. Admin: ${note}`,
   );
 }
 export function move(
@@ -218,7 +218,7 @@ export function move(
     before,
     { permission, roomId },
     ["admin", "rep", "faculty", "student"],
-    `${session.subject} · ${permission.date} · new room ${room.number}`,
+    `${session.subject} · ${session.section} · ${permission.date} · ${session.start}–${session.end} IST · room ${next.rooms.find(r => r.id === session.roomId)?.number ?? "not specified"} → ${room.number}. Reason: ${permission.reason}`,
   );
 }
 export function makeup(
