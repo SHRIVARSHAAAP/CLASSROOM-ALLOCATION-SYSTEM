@@ -63,7 +63,7 @@ export const navigation: Record<Role, string[]> = {
     "map",
     "notifications",
   ],
-  faculty: ["map"],
+  faculty: ["map", "timetable"],
   student: ["dashboard", "timetable", "map", "notifications"],
 };
 export function title(view: string, role: Role): string {

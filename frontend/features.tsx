@@ -1199,7 +1199,7 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
       (s) =>
         user.role === "admin" ||
         (user.role === "faculty"
-          ? s.facultyId === user.facultyId
+          ? (s.facultyId === user.facultyId || Boolean(state.staffPool?.some(p => p.staffName === user.name && p.section === s.section && s.courseCodes?.includes(p.courseCode))))
           : s.section === user.section),
     )
     .filter(

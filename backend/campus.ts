@@ -137,7 +137,7 @@ function scoped(snapshot: Awaited<ReturnType<typeof campusSnapshot>>, user: User
     ...state, notifications: state.notifications.filter((n) => data.notifications.find((r) => text(r, "id") === n.id)?.user_id === user.id),
   };
   const ownsSession = (id: string) => state.sessions.some((s) => s.id === id && (
-    user.role === "faculty" ? s.facultyId === user.id : s.section === user.section
+    user.role === "faculty" ? (s.facultyId === user.id || Boolean(state.staffPool?.some(p => p.staffName === user.name && p.section === s.section && s.courseCodes?.includes(p.courseCode)))) : s.section === user.section
   ));
   const ownRequest = new Set(["cancellation_reports", "classroom_issues", "rep_permissions"].flatMap((table) =>
     data[table].filter((r) => r.rep_id === user.id).map((r) => text(r, "id")),
