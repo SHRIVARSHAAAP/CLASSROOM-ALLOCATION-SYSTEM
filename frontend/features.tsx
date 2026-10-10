@@ -486,7 +486,7 @@ export function ChangeRoom({ state, action, busy }: FeatureProps) {
       session
         ? {
             seats: session.seats,
-            resources: state.staffPool?.length ? {} : { projector: 1 },
+            resources: state.staffPool?.length ? ({} as Record<string, number>) : { projector: 1 },
             facultyId: session.facultyId,
             section: session.section,
             exclude: session.id,
@@ -993,7 +993,7 @@ export function Classrooms({ state, action, busy }: FeatureProps) {
               capacity: 40,
               type: "lecture",
               active: true,
-              resources: state.staffPool?.length ? {} : { projector: 1 },
+              resources: state.staffPool?.length ? ({} as Record<string, number>) : { projector: 1 },
             })
           }
         >
