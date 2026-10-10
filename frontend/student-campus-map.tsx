@@ -13,7 +13,7 @@ const anchors = [
   ["Y", 350, 390],
 ] as const;
 
-export default function StudentCampusMap({ state }: { state: State }) {
+export default function StudentCampusMap({ state, directoryOnly = false }: { state: State; directoryOnly?: boolean }) {
   const [block, setBlock] = useState("");
   const [floor, setFloor] = useState("");
   const [selected, setSelected] = useState<Room | null>(null);
@@ -140,15 +140,16 @@ export default function StudentCampusMap({ state }: { state: State }) {
           <div className="room-meta">
             <span>Block<strong>{selected.block}</strong></span>
             <span>Floor<strong>{selected.floor === 0 ? "Ground" : selected.floor}</strong></span>
-            <span>Capacity<strong>{selected.capacity} seats</strong></span>
+            {!directoryOnly && <><span>Capacity<strong>{selected.capacity} seats</strong></span>
             <span>Room type<strong>{selected.type.replaceAll("_", " ")}</strong></span>
+            </>}
           </div>
-          <h3>Facilities</h3>
+          {!directoryOnly && <><h3>Facilities</h3>
           <div className="facility-chips">
             {Object.entries(selected.resources).map(([name, count]) => (
               <span key={name}>{name.replaceAll("_", " ")}: {count}</span>
             ))}
-          </div>
+          </div></>}
         </section>
       )}
     </section>

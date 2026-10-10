@@ -263,7 +263,7 @@ export default function Workspace({
           ? <StudentCampusMap state={props.state} />
           : <Rooms state={props.state} />;
       case "map":
-        if (user.role === "student") return <StudentCampusMap state={props.state} />;
+        if (user.role === "student" || user.role === "faculty") return <StudentCampusMap state={props.state} directoryOnly={user.role === "faculty"} />;
         return (
           <Rooms
             state={props.state}
@@ -410,14 +410,14 @@ export default function Workspace({
             >
               {dark ? <Sun size={21} /> : <Moon size={21} />}
             </button>
-            <Link
+            {user.role !== "faculty" && <Link
               href="/portal/notifications"
               aria-label={`${unread} unread notifications`}
               className="notification-button"
             >
               <Bell size={21} />
               {unread > 0 && <i />}
-            </Link>
+            </Link>}
             <div className="profile-menu">
               <button
                 className="profile-button"

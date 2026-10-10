@@ -5,5 +5,6 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const user = await currentUser();
   if (!user) redirect("/login/student");
+  if (user.role === "faculty") redirect("/portal/map");
   return <Workspace user={user} demo={demoMode()} view="dashboard" />;
 }

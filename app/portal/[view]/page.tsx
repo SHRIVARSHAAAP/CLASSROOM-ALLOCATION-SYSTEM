@@ -11,6 +11,7 @@ export default async function Page({
   const user = await currentUser();
   if (!user) redirect("/login/student");
   const { view } = await params;
+  if (user.role === "faculty" && view !== "map") redirect("/portal/map");
   if (!navigation[user.role].includes(view)) notFound();
   return <Workspace user={user} demo={demoMode()} view={view} />;
 }
