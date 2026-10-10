@@ -85,22 +85,28 @@ export function suggestions(
   for (let offset = 1; searched < 14 && offset < 60; offset++) {
     const date = nextDate(cancelledDate, offset);
     if (
-      new Date(date + "T12:00:00Z").getUTCDay() === 0 ||
+      new Date(date + "T12:00:00Z").getUTCDay() === 0 || (state.periods?.length && new Date(date + "T12:00:00Z").getUTCDay() === 6) ||
       state.holidays.includes(date)
     )
       continue;
     searched++;
-    for (const hour of [9, 10, 11, 13, 14, 15, 16]) {
+
+    const periodCount = session.sessionType === "lab" && session.startPeriod && session.endPeriod ? session.endPeriod - session.startPeriod + 1 : 1;
+    const campusSlots = state.periods?.flatMap((period, index) => {
+      const last = state.periods?.[index + periodCount - 1];
+      if (!last || (periodCount > 1 && period.period <= 4 && last.period > 4) || (periodCount > 1 && period.period <= 8 && last.period > 8)) return [];
+      return [{start: period.start, end: last.end}];
+    });
+    const fallbackSlots = [9, 10, 11, 13, 14, 15, 16].flatMap(hour => {
       const endMinute = hour * 60 + duration;
-      if (endMinute > 17 * 60 || (hour < 13 && endMinute > 12 * 60)) continue;
-      const slot = {
-        date,
-        start: `${String(hour).padStart(2, "0")}:00`,
-        end: `${String(Math.floor(endMinute / 60)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`,
-      };
+      if (endMinute > 17 * 60 || (hour < 13 && endMinute > 12 * 60)) return [];
+      return [{start: String(hour).padStart(2,"0")+":00",end: String(Math.floor(endMinute / 60)).padStart(2,"0")+":"+String(endMinute % 60).padStart(2,"0")}];
+    });
+    for (const period of campusSlots?.length ? campusSlots : fallbackSlots) {
+      const slot = {date, start: period.start, end: period.end};
       const candidate = rank(state, slot, {
         seats: session.seats,
-        resources: { projector: 1 },
+        resources: state.staffPool?.length ? {} : { projector: 1 },
         facultyId: session.facultyId,
         section: session.section,
         block,

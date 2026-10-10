@@ -33,6 +33,8 @@ export type Room = {
   type: "lecture" | "computer_lab" | "lab" | "seminar";
   active: boolean;
   resources: Record<string, number>;
+  capacityVerified?: boolean;
+  sample?: boolean;
 };
 export type Slot = { date: string; start: string; end: string };
 export type Session = {
@@ -48,6 +50,10 @@ export type Session = {
   facultyId: string;
   faculty: string;
   seats: number;
+  sessionType?: string;
+  startPeriod?: number;
+  endPeriod?: number;
+  courseCodes?: string[];
   validFrom?: string;
   validTo?: string;
 };
@@ -135,6 +141,8 @@ export type State = {
   mapImage?: string;
   catalog?: { blockCount: number; sectionCount: number };
   faculty?: { id: string; name: string }[];
+  periods?: { period: number; start: string; end: string }[];
+  staffPool?: { section: string; courseCode: string; courseTitle: string; staffName: string }[];
   sections?: { id: string; department: string; year: number; size: number }[];
 };
 export const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);

@@ -1,4 +1,4 @@
-import type { Booking, State } from "./types";
+import { today, type Booking, type State } from "./types";
 export function csv(rows: unknown[][]): string {
   return rows
     .map((row) =>
@@ -52,49 +52,43 @@ export async function letter(booking: Booking, state: State) {
     }
     if (buffer) write();
   }
-  line("PSG COLLEGE OF TECHNOLOGY", 18, true);
-  line("Department of " + booking.department, 12);
-  line("SAMPLE PERMISSION LETTER - FOR REVIEW", 9, true);
-  y -= 20;
-  line("To the Head of Department", 12, true);
-  line("Subject: Permission to use a classroom for " + booking.event, 12, true);
-  line("Reference: " + booking.reference);
-  y -= 12;
-  line("Respected Sir / Madam,");
-  line(
-    `On behalf of ${booking.club}, I request permission to conduct ${booking.event}.`,
-  );
-  line("Purpose: " + booking.purpose);
-  line("Organizer: " + booking.organizer);
-  line("Faculty coordinator: " + booking.coordinator);
-  line("Room: " + state.rooms.find((r) => r.id === booking.roomId)?.number);
-  line(`Date: ${booking.date}  Time: ${booking.start} - ${booking.end} IST`);
-  line("Expected participants: " + booking.participants);
-  line(
-    "Required facilities: " +
-      (Object.entries(booking.resources)
-        .filter(([, count]) => count > 0)
-        .map(([name, count]) => name.replaceAll("_", " ") + " (" + count + ")")
-        .join(", ") || "Standard classroom"),
-  );
-  line(
-    "We will follow college rules and leave the classroom in good condition.",
-  );
-  y -= 20;
-  line("Organizer signature: __________________________");
-  line("HOD signature: _______________________________");
-  line("Date: _________________      Seal: _________________");
-  page.drawText(
-    "Demo document. HOD signature does not automatically reserve a room.",
-    { x: 58, y: 40, font, size: 9 },
-  );
+
+  page.drawText(booking.club.toUpperCase(), {x: 58,y,font:bold,size:16});
+  y-=28;
+  line("Date: "+today());
+  line("From: Student Coordinator,");
+  line("PSG Tech");
+  y-=8;
+  line("To: The Program Coordinator,",12,true);
+  line("PSG Tech");
+  y-=8;
+  line("Subject: Permission to use a classroom for a club event",12,true);
+  y-=8;
+  line("Respected Sir/Madam,");
+  line("I, "+booking.organizer+", on behalf of "+booking.club+", kindly request permission to conduct "+booking.event+" in Room "+(state.rooms.find(r=>r.id===booking.roomId)?.number ?? "")+" on "+booking.date+", from "+booking.start+" to "+booking.end+" (IST), for "+booking.participants+" participants.");
+  y-=8;
+  line("Purpose: "+booking.purpose);
+  line("Block: "+(state.rooms.find(r=>r.id===booking.roomId)?.block ?? ""));
+  line("Facilities Required: "+(Object.entries(booking.resources).filter(([,count])=>count>0).map(([name])=>name.replaceAll("_"," ")).join(", ") || "Standard classroom"));
+  line("Faculty Advisor: "+booking.coordinator);
+  line("We assure you that all college rules will be followed, the facilities will be used responsibly, and the classroom will be left clean and in good condition after the event.");
+  y-=12;
+  line("Kindly grant us permission for the above request.");
+  y-=35;
+  page.drawText("________________________",{x:58,y,font,size:11});
+  page.drawText("________________________",{x:330,y,font,size:11});
+  y-=25;
+  page.drawText("Student Head",{x:58,y,font,size:11});
+  page.drawText("Faculty Advisor",{x:330,y,font,size:11});
+  y-=35;
+  page.drawText("Reference: "+booking.reference,{x:180,y,font,size:10});
   const bytes = await pdf.save();
   const url = URL.createObjectURL(
     new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
   );
   const a = document.createElement("a");
   a.href = url;
-  a.download = booking.reference + "-HOD.pdf";
+  a.download = booking.reference + "-permission-letter.pdf";
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

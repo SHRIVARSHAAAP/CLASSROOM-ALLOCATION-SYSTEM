@@ -37,10 +37,10 @@ export default function TimetableTables({
         const ordered = [...group.rows].sort((a, b) =>
           a.day - b.day || a.start.localeCompare(b.start) || a.end.localeCompare(b.end)
         );
-        const slots = Array.from(new Map(ordered.map((row) => [
+        const slots = state.periods?.length ? state.periods : Array.from(new Map(ordered.map((row) => [
           row.start + "|" + row.end, { start: row.start, end: row.end },
         ])).values()).sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
-        const room = (id: string) => state.rooms.find((r) => r.id === id)?.number ?? "Room unassigned";
+        const room = (id: string) => state.rooms.find((r) => r.id === id)?.number ?? "Venue not set";
         return (
           <section className="panel" key={key}>
             <h2>{groupBy === "faculty" ? "Faculty: " : "Class: "}{group.name}</h2>
@@ -52,19 +52,19 @@ export default function TimetableTables({
                     <thead><tr><th scope="col">Day</th>{slots.map((slot) => (
                       <th scope="col" key={slot.start + "|" + slot.end}>{slot.start}–{slot.end}</th>
                     ))}</tr></thead>
-                    <tbody>{days.slice(0, 6).map((day, i) => (
+                    <tbody>{days.slice(0, state.periods?.length ? 5 : 6).map((day, i) => (
                       <tr key={day}>
                         <th scope="row">{day}</th>
                         {slots.map((slot) => (
                           <td key={slot.start + "|" + slot.end}>
-                            {ordered.filter((row) => row.day === i + 1 && row.start === slot.start && row.end === slot.end).map((row) => (
+                            {ordered.filter((row) => row.day === i + 1 && row.start <= slot.start && row.end >= slot.end).map((row) => (
                               <div className="timetable-cell" key={row.id}>
                                 <strong>{row.subject}</strong>
                                 <span>{groupBy === "faculty" ? row.section : row.faculty}</span>
                                 <span>{room(row.roomId)}</span>
                               </div>
                             ))}
-                            {!ordered.some((row) => row.day === i + 1 && row.start === slot.start && row.end === slot.end) && <span aria-label="No class">—</span>}
+                            {!ordered.some((row) => row.day === i + 1 && row.start <= slot.start && row.end >= slot.end) && <span aria-label="No class">—</span>}
                           </td>
                         ))}
                       </tr>

@@ -20,7 +20,7 @@ async function readTable(table: string) {
   const rows: Row[] = [];
   for (let offset = 0; ; offset += 1000) {
     const result = await supabase(true).from(table).select("*").range(offset, offset + 999);
-    if (result.error) throw new AppError(503, "Cannot read campus data. Apply db/live-integration.sql and check the Supabase settings.");
+    if (result.error) throw new AppError(503, "Cannot read campus data. Apply db/restore-supplied-campus.sql and check the Supabase settings.");
     rows.push(...(result.data as Row[]));
     if (result.data.length < 1000) break;
   }
@@ -33,7 +33,7 @@ export async function campusSnapshot() {
     const names = ["users", "buildings", "class_sections", "classrooms", "classroom_resources",
       "timetable_versions", "timetable_sessions", "session_occurrences", "makeup_sessions",
       "cancellation_reports", "classroom_issues", "rep_permissions", "club_bookings",
-      "maintenance_blocks", "notifications", "notification_deliveries", "audit_logs", "campus_holidays"];
+      "maintenance_blocks", "notifications", "notification_deliveries", "audit_logs", "campus_holidays", "periods", "course_staff_pool"];
     const tables = await Promise.all(names.map(readTable));
     const data = Object.fromEntries(names.map((name, index) => [name, tables[index]]));
     const after = await readTable("campus_revision");
@@ -51,6 +51,7 @@ export async function campusSnapshot() {
         id: text(r, "id"), block: text(r, "building_id"), floor: number(r, "floor"),
         number: text(r, "room_number"), capacity: number(r, "capacity"),
         type: r.room_type as State["rooms"][number]["type"], active: Boolean(r.is_active),
+        capacityVerified: Boolean(r.capacity_verified), sample: Boolean(r.is_sample),
         resources: resources(text(r, "id")),
       })),
       sessions: data.timetable_sessions.filter((s) => published.has(text(s, "version_id"))).map((s) => ({
@@ -59,7 +60,9 @@ export async function campusSnapshot() {
         subject: text(s, "subject"), section: text(s, "section_id"),
         department: text(sections.get(text(s, "section_id")), "department_id"),
         year: number(sections.get(text(s, "section_id")), "year"),
-        facultyId: text(s, "faculty_id"), faculty: text(users.get(text(s, "faculty_id")), "name"),
+        facultyId: text(s, "faculty_id"), faculty: text(users.get(text(s, "faculty_id")), "name") || "Faculty not assigned",
+        sessionType: text(s, "session_type") || "class", startPeriod: number(s, "start_period") || undefined,
+        endPeriod: number(s, "end_period") || undefined, courseCodes: s.course_codes as string[] | undefined,
         seats: number(sections.get(text(s, "section_id")), "size"),
         validFrom: text(versions.get(text(s, "version_id")), "effective_from"),
         validTo: text(versions.get(text(s, "version_id")), "effective_to"),
@@ -117,6 +120,8 @@ export async function campusSnapshot() {
       })),
       counter: data.club_bookings.reduce((max, b) => Math.max(max, Number(text(b, "reference").split("-").at(-1)) || 0), 0),
       holidays: data.campus_holidays.map((r) => text(r, "event_date")),
+      periods: data.periods.map((p) => ({ period: number(p, "period"), start: minuteTime(number(p, "start_minute")), end: minuteTime(number(p, "end_minute")) })).sort((a,b) => a.period - b.period),
+      staffPool: data.course_staff_pool.map((p) => ({section: text(p,"section_id"), courseCode: text(p,"course_code"), courseTitle: text(p,"course_title"), staffName: text(p,"staff_name")})),
       faculty: data.users.filter((u) => u.role === "faculty" && u.is_active).map((u) => ({ id: text(u, "id"), name: text(u, "name") })),
       sections: data.class_sections.map((s) => ({ id: text(s, "id"), department: text(s, "department_id"), year: number(s, "year"), size: number(s, "size") })),
       catalog: { blockCount: data.buildings.length, sectionCount: data.class_sections.length },
@@ -146,7 +151,8 @@ function scoped(snapshot: Awaited<ReturnType<typeof campusSnapshot>>, user: User
     id: b.id, date: b.date, start: b.start, end: b.end, roomId: b.roomId, kind: "club" as const, title: "Approved club booking",
   }));
   return {
-    ...state, faculty: undefined, sections: undefined, sessions, audit: [], requests: state.requests.filter((r) => ownRequest.has(r.id)), bookings,
+    ...state, faculty: undefined, sections: undefined,
+    staffPool: state.staffPool?.filter((p) => user.role === "faculty" ? p.staffName === user.name : p.section === user.section), sessions, audit: [], requests: state.requests.filter((r) => ownRequest.has(r.id)), bookings,
     overrides: state.overrides.map((o) => ownsSession(o.sessionId) ? o : ({ ...o, reason: "", reporter: "", approver: "" })),
     extras: [...state.extras.map((e) => e.kind === "makeup" && (
       user.role === "faculty" ? e.facultyId !== user.id : e.section !== user.section
@@ -253,7 +259,7 @@ export async function liveAction(request: Request) {
       action.type === "move" ? state.sessions.find((s) => s.id === state.requests.find((r) => r.id === action.permissionId)?.sessionId) :
       action.type === "decide" || action.type === "makeup" ? state.sessions.find((s) => s.id === state.requests.find((r) => r.id === (action.type === "decide" ? action.id : action.requestId))?.sessionId) : undefined;
     patch.targetSection = target?.section;
-    patch.targetFaculty = target?.facultyId;
+    patch.targetFaculty = target?.facultyId || undefined;
     const write = await supabase(true).rpc("campus_commit_change", {
       actor_id: user.id, expected_revision: snapshot.revision, change: patch,
     });

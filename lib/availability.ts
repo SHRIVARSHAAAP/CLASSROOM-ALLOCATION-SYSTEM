@@ -27,7 +27,7 @@ export function occupancy(state: State, date: string): Extra[] {
           date,
           start: session.start,
           end: session.end,
-          roomId: change?.roomId ?? session.roomId,
+          roomId: change?.roomId ?? (["library", "tutor_ward", "pe", "project"].includes(session.sessionType ?? "") ? "" : session.roomId),
           kind: "regular" as const,
           section: session.section,
           facultyId: session.facultyId,

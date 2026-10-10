@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import WhatsappSettings from "./whatsapp-settings";
+import FacultyPool from "./faculty-pool";
 import {
   ArrowRight,
   CalendarDays,
@@ -595,7 +595,7 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
       <section className="panel">
         <h2>Plan your next club event</h2>
         <p className="muted">
-          Create the booking, print the HOD letter and upload a sample signed
+          Create the booking, print the Program Coordinator letter and upload a sample signed
           copy before admin review.
         </p>
         <form
@@ -620,7 +620,7 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
                   resources: needs.resources,
                 },
               },
-              "Booking created. Go to My Bookings to download the HOD letter.",
+              "Booking created. Go to My Bookings to download the Program Coordinator letter.",
             );
           }}
         >
@@ -723,7 +723,7 @@ export function BookingForm({ state, action, busy }: FeatureProps) {
             Working projector required
           </label>
           <button className="primary" disabled={busy || !valid.success}>
-            Create booking &amp; HOD letter
+            Create booking &amp; Program Coordinator letter
           </button>
         </form>
       </section>
@@ -804,7 +804,7 @@ function BookingCard({
           }}
         >
           <FileText size={16} />
-          Download HOD letter
+          Download Program Coordinator letter
         </button>
         <button
           className="text-link"
@@ -820,7 +820,7 @@ function BookingCard({
       {user.role === "club" && booking.status === "awaiting_hod_signature" && (
         <label className="upload-box">
           <Upload size={17} />
-          Upload signed HOD letter
+          Upload signed Program Coordinator letter
           <input
             type="file"
             disabled={busy}
@@ -956,7 +956,7 @@ export function Bookings(props: FeatureProps) {
           </select>
         </label>
         <p className="muted small">
-          Request → HOD signature → Signed upload → Admin approval
+          Request → Program Coordinator signature → Signed upload → Admin approval
         </p>
       </div>
       {bookings.length ? (
@@ -1388,6 +1388,7 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
         groupBy={groupBy}
         date={date}
       />
+      {groupBy === "faculty" && <FacultyPool state={state} query={filter} />}
       <p className="muted small">
         One-day cancellations and changes never overwrite the fixed recurring
         timetable.
@@ -1455,7 +1456,7 @@ export function Timetable({ state, user, action, busy, facultyView = false }: Fe
                 onClick={() =>
                   void action(
                     { type: "publish", rows: preview },
-                    "Validated timetable published to the demo.",
+                    "Validated timetable published.",
                   )
                 }
               >
@@ -1474,7 +1475,7 @@ export function Notifications({ state, user, save, demo = true }: FeatureProps) 
   );
   return (
     <>
-      {!demo && <WhatsappSettings admin={user.role === "admin"} />}
+
       <div className="toolbar">
         <p className="muted">
           In-app updates show your requests and timetable changes.
@@ -1703,7 +1704,7 @@ export function AuditLog({ state }: FeatureProps) {
         {!items.length && (
           <Empty
             title="No changes recorded"
-            text="Actions performed in the demo create a history here."
+            text="Saved campus actions create a history here."
           />
         )}
       </section>

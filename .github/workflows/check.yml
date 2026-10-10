@@ -51,3 +51,6 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/test-live.sql
           psql -v ON_ERROR_STOP=1 -f db/whatsapp-integration.sql
           psql -v ON_ERROR_STOP=1 -f db/test-whatsapp.sql
+          psql -v ON_ERROR_STOP=1 -f db/restore-supplied-campus.sql
+          psql -v ON_ERROR_STOP=1 -f db/restore-supplied-campus.sql
+          psql -v ON_ERROR_STOP=1 -f db/test-supplied-campus.sql
