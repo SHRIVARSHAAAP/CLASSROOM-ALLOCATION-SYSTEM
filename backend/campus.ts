@@ -273,7 +273,7 @@ export async function liveAction(request: Request) {
       if (code === "23505") throw new AppError(409, "A matching request or reservation already exists. Check My Requests before submitting again. [23505]");
       if (code === "23502") throw new AppError(503, "A required database field is missing. Your database schema may need updating. The request was not saved. [23502]");
       if (code === "23503") throw new AppError(409, "A linked account, class or room record could not be found. The request was not saved. [23503]");
-      throw new AppError(409, "The database rejected this request. No cancellation or notification was saved. Please share this error code: [" + code + "]");
+      throw new AppError(409, "The database rejected this request. No change or notification was saved. Please share this error code: [" + code + "]");
     }
     committed = true;
     after(async () => { try { await dispatchWhatsapp(); } catch { /* In-app updates remain saved. */ } });

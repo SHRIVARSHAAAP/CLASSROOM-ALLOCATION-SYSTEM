@@ -1,4 +1,4 @@
--- Run once in Supabase SQL Editor. Replaces the save function; keeps accounts, timetables, requests and notifications.
+-- Rescheduling repair. Run once in Supabase SQL Editor. Replaces the save function; keeps accounts, timetables, requests and notifications.
 begin;
 create or replace function public.campus_commit_change(
  actor_id uuid, expected_revision bigint, change jsonb

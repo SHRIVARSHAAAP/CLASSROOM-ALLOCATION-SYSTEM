@@ -1133,7 +1133,7 @@ declare
  occurrence uuid; session_row timetable_sessions%rowtype;
  booking_owner uuid; version uuid; target_room uuid; resource_name text;
  target_session uuid; target_date date; target_user record; notice uuid;
- new_revision bigint; audit jsonb:=change->'audit';
+ makeup_id uuid; new_revision bigint; audit jsonb:=change->'audit';
 begin
  select role,section_id,club_permission into actor_role,actor_section,can_book
  from public.users where id=actor_id and is_active;
@@ -1227,7 +1227,13 @@ begin
    if occurrence is null then raise exception 'Not awaiting makeup'; end if;
    insert into public.makeup_sessions(occurrence_id,event_date,start_time,end_time,classroom_id,faculty_id,section_id,subject)
    values(occurrence,(row_data->>'date')::date,(row_data->>'start')::time,(row_data->>'end')::time,
-    (row_data->>'roomId')::uuid,nullif(row_data->>'facultyId','')::uuid,row_data->>'section',row_data->>'title');
+    (row_data->>'roomId')::uuid,nullif(row_data->>'facultyId','')::uuid,row_data->>'section',row_data->>'title') returning id into makeup_id;
+   -- Reserve just this makeup. Existing reservations still enforce clashes.
+   insert into public.occupancy_ledger(source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at)
+   values('makeup',makeup_id,(row_data->>'roomId')::uuid,nullif(row_data->>'facultyId','')::uuid,
+    row_data->>'section',(row_data->>'date')::date,
+    (row_data->>'date')::date+(row_data->>'start')::time,
+    (row_data->>'date')::date+(row_data->>'end')::time);
   end if;
  end loop;
 
@@ -1261,6 +1267,9 @@ begin
      and source_id=(row_data->>'sessionId')::uuid and event_date=(row_data->>'date')::date;
    end if;
   end loop;
+ elsif operation = 'makeup' then
+  -- The makeup and its occupancy were inserted atomically above.
+  null;
  elsif operation <> 'report' then
  delete from public.occupancy_ledger;
  insert into public.occupancy_ledger(source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at)

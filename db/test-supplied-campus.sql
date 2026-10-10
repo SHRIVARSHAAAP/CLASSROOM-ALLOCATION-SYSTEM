@@ -27,7 +27,7 @@ insert into public.users(id,name,email,role) values
 ('00000000-0000-4000-8000-000000000095','First faculty','first-faculty@test.invalid','faculty'),
 ('00000000-0000-4000-8000-000000000096','Second faculty','second-faculty@test.invalid','faculty');
 do $$
-declare session_uuid uuid; ledger_before bigint;
+declare session_uuid uuid; ledger_before bigint; regular_before bigint; destination uuid; chosen_start time; chosen_end time; makeup_saved uuid;
 begin
  select count(*) into ledger_before from public.occupancy_ledger;
  select id into session_uuid from public.timetable_sessions
@@ -59,5 +59,29 @@ begin
  if not exists(select 1 from public.occupancy_ledger where source_kind='regular' and source_id=session_uuid and event_date='2026-10-21') then raise exception 'Following week altered'; end if;
  if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000099' and event='cancellation_approved') then raise exception 'Rep approval notice missing'; end if;
  if (select count(*) from public.notifications where user_id in ('00000000-0000-4000-8000-000000000095','00000000-0000-4000-8000-000000000096') and event='cancellation_approved')<>2 then raise exception 'Faculty approval notices missing'; end if;
+
+ -- Confirm a makeup in a free source period without rebuilding existing reservations.
+ select id into destination from public.classrooms where room_number='A101';
+ select make_time(p.start_minute/60,p.start_minute%60,0),make_time(p.end_minute/60,p.end_minute%60,0)
+ into chosen_start,chosen_end from public.periods p
+ where not exists(select 1 from public.occupancy_ledger l
+ where l.event_date='2026-10-15' and (l.classroom_id=destination or l.section_id='2026-Z-G1')
+ and l.slot && tsrange('2026-10-15'::date+p.start_minute*interval '1 minute','2026-10-15'::date+p.end_minute*interval '1 minute','[)'))
+ order by p.period limit 1;
+ if chosen_start is null then raise exception 'No free source period found'; end if;
+ select count(*) into regular_before from public.occupancy_ledger where source_kind='regular';
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000001',
+ (select revision from public.campus_revision where id=1),
+ jsonb_build_object('type','makeup','targetSection','2026-Z-G1',
+ 'extras',jsonb_build_array(jsonb_build_object('id','makeup-00000000-0000-4000-8000-000000000098','kind','makeup','date','2026-10-15','start',chosen_start,'end',chosen_end,'roomId',destination,'facultyId','','section','2026-Z-G1','title','Makeup test')),
+ 'audit',jsonb_build_object('action','makeup_confirmed','before',null,'after',jsonb_build_object('date','2026-10-15')),
+ 'notice',jsonb_build_object('roles',jsonb_build_array('rep','faculty','student'),'title','Makeup confirmed','body','Makeup test')));
+ select m.id into makeup_saved from public.makeup_sessions m join public.cancellation_reports r on r.occurrence_id=m.occurrence_id
+ where r.id='00000000-0000-4000-8000-000000000098';
+ if makeup_saved is null then raise exception 'Makeup not saved'; end if;
+ if not exists(select 1 from public.occupancy_ledger where source_kind='makeup' and source_id=makeup_saved and classroom_id=destination) then raise exception 'Makeup reservation not saved'; end if;
+ if (select count(*) from public.occupancy_ledger where source_kind='regular')<>regular_before then raise exception 'Regular reservations changed by makeup'; end if;
+ if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000099' and event='makeup_confirmed') then raise exception 'Rep makeup notice missing'; end if;
+ if (select count(*) from public.notifications where user_id in ('00000000-0000-4000-8000-000000000095','00000000-0000-4000-8000-000000000096') and event='makeup_confirmed')<>2 then raise exception 'Faculty makeup notices missing'; end if;
 end$$;
 rollback;
