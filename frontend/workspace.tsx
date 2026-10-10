@@ -410,14 +410,14 @@ export default function Workspace({
             >
               {dark ? <Sun size={21} /> : <Moon size={21} />}
             </button>
-            {user.role !== "faculty" && <Link
+            <Link
               href="/portal/notifications"
               aria-label={`${unread} unread notifications`}
               className="notification-button"
             >
               <Bell size={21} />
               {unread > 0 && <i />}
-            </Link>}
+            </Link>
             <div className="profile-menu">
               <button
                 className="profile-button"
