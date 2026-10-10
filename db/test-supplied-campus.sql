@@ -13,3 +13,26 @@ end$$;
 -- Shared mutations continue to work with unassigned faculty and blank venues.
 select public.campus_commit_change('00000000-0000-4000-8000-000000000001',
 (select revision from public.campus_revision where id=1),'{"type":"room"}');
+
+-- Exercise the actual report transaction and notification insert, not just room edits.
+begin;
+insert into auth.users(id) values('00000000-0000-4000-8000-000000000099');
+insert into public.users(id,name,email,role,section_id) values
+('00000000-0000-4000-8000-000000000099','Test CSE rep','report-rep@test.invalid','rep','2026-Z-G1');
+do $$
+declare session_uuid uuid;
+begin
+ select id into session_uuid from public.timetable_sessions
+ where section_id='2026-Z-G1' and day_of_week=3 and session_type='class'
+ order by start_minute limit 1;
+ if session_uuid is null then raise exception 'Wednesday source class missing'; end if;
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000099',
+ (select revision from public.campus_revision where id=1),
+ jsonb_build_object('type','report','targetSection','2026-Z-G1',
+ 'requests',jsonb_build_array(jsonb_build_object('id','00000000-0000-4000-8000-000000000098','sessionId',session_uuid,'date','2026-10-14','type','cancellation','reason','Faculty has other work','status','pending')),
+ 'audit',jsonb_build_object('action','cancellation_reported','before',null,'after',jsonb_build_object('reason','Faculty has other work')),
+ 'notice',jsonb_build_object('roles',jsonb_build_array('admin'),'title','Cancellation reported','body','Faculty has other work')));
+ if not exists(select 1 from public.cancellation_reports where id='00000000-0000-4000-8000-000000000098' and status='pending') then raise exception 'Report not saved'; end if;
+ if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000001' and event='cancellation_reported') then raise exception 'Admin notice not created'; end if;
+end$$;
+rollback;

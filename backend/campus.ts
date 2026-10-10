@@ -263,7 +263,18 @@ export async function liveAction(request: Request) {
     const write = await supabase(true).rpc("campus_commit_change", {
       actor_id: user.id, expected_revision: snapshot.revision, change: patch,
     });
-    if (write.error) throw new AppError(409, "The change was not saved. Data may have changed, a room may be occupied, or the database update is missing. Refresh and retry.");
+    if (write.error) {
+      const code = write.error.code || "UNKNOWN";
+      console.error("Campus save failed", { action: action.type, code, message: write.error.message });
+      if (write.error.message === "Campus data changed") throw new AppError(409, "Another change was saved at the same time. Refresh this page and send the request again. [STALE_REVISION]");
+      if (["42703", "42P01", "42883", "PGRST202", "PGRST204"].includes(code)) throw new AppError(503, "Your Supabase database is missing a required table, column or function update. The request was not saved. [" + code + "]");
+      if (code === "23P01") throw new AppError(409, "The database found a conflicting room or timetable reservation. The request was not saved. [23P01]");
+      if (code === "57014") throw new AppError(503, "The database took too long to save. The request was not saved; please retry. [57014]");
+      if (code === "23505") throw new AppError(409, "A matching request or reservation already exists. Check My Requests before submitting again. [23505]");
+      if (code === "23502") throw new AppError(503, "A required database field is missing. Your database schema may need updating. The request was not saved. [23502]");
+      if (code === "23503") throw new AppError(409, "A linked account, class or room record could not be found. The request was not saved. [23503]");
+      throw new AppError(409, "The database rejected this request. No cancellation or notification was saved. Please share this error code: [" + code + "]");
+    }
     committed = true;
     after(async () => { try { await dispatchWhatsapp(); } catch { /* In-app updates remain saved. */ } });
     return await response(await campusSnapshot(), user);
