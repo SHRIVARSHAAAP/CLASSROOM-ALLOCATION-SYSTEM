@@ -1252,6 +1252,8 @@ begin
 
  -- Rebuild dated occupancy in this same transaction. Exclusion constraints enforce
  -- room, faculty and section clashes across recurring classes, makeups and clubs.
+ -- A pending report does not change any room reservation.
+ if operation <> 'report' then
  delete from public.occupancy_ledger;
  insert into public.occupancy_ledger(source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at)
  select 'regular',s.id,coalesce(o.classroom_override,s.classroom_id),s.faculty_id,s.section_id,d::date,
@@ -1270,6 +1272,8 @@ begin
  select 'club',id,classroom_id,event_date,event_date+start_time,event_date+end_time from public.club_bookings where status='approved';
  insert into public.occupancy_ledger(source_kind,source_id,classroom_id,event_date,starts_at,ends_at)
  select 'maintenance',id,classroom_id,event_date,event_date+start_time,event_date+end_time from public.maintenance_blocks;
+
+ end if;
 
  if audit is not null then
   insert into public.audit_logs(actor_id,action,entity,before_value,after_value)

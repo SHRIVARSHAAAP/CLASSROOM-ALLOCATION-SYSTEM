@@ -19,9 +19,13 @@ begin;
 insert into auth.users(id) values('00000000-0000-4000-8000-000000000099');
 insert into public.users(id,name,email,role,section_id) values
 ('00000000-0000-4000-8000-000000000099','Test CSE rep','report-rep@test.invalid','rep','2026-Z-G1');
-do $$
-declare session_uuid uuid;
+insert into auth.users(id) values('00000000-0000-4000-8000-000000000097');
+insert into public.users(id,name,email,role) values
+('00000000-0000-4000-8000-000000000097','Second admin','second-admin@test.invalid','admin');
+do $
+declare session_uuid uuid; ledger_before bigint;
 begin
+ select count(*) into ledger_before from public.occupancy_ledger;
  select id into session_uuid from public.timetable_sessions
  where section_id='2026-Z-G1' and day_of_week=3 and session_type='class'
  order by start_minute limit 1;
@@ -32,7 +36,9 @@ begin
  'requests',jsonb_build_array(jsonb_build_object('id','00000000-0000-4000-8000-000000000098','sessionId',session_uuid,'date','2026-10-14','type','cancellation','reason','Faculty has other work','status','pending')),
  'audit',jsonb_build_object('action','cancellation_reported','before',null,'after',jsonb_build_object('reason','Faculty has other work')),
  'notice',jsonb_build_object('roles',jsonb_build_array('admin'),'title','Cancellation reported','body','Faculty has other work')));
+ if (select count(*) from public.occupancy_ledger) <> ledger_before then raise exception 'Pending report changed reservations'; end if;
  if not exists(select 1 from public.cancellation_reports where id='00000000-0000-4000-8000-000000000098' and status='pending') then raise exception 'Report not saved'; end if;
  if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000001' and event='cancellation_reported') then raise exception 'Admin notice not created'; end if;
+ if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000097' and event='cancellation_reported') then raise exception 'Second admin notice not created'; end if;
 end$$;
 rollback;
