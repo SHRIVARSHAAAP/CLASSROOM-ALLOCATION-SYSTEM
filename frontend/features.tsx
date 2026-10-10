@@ -378,9 +378,10 @@ export function Reschedule({ state, action, busy }: FeatureProps) {
   return (
     <>
       <p className="info-note">
-        Top three suggestions check faculty, section, room, seats and working
-        facilities over the next 14 college days. Sundays and configured
-        holidays are skipped. Confirmation rechecks the current sample records.
+        Suggestions check room availability, class-section clashes and capacity
+        over the next 14 college days. Teacher clashes are checked only when an
+        individual teacher is assigned. Non-teaching days and configured holidays
+        are skipped. Confirmation rechecks the current shared records.
       </p>
       {options.map(({ request, options }) => (
         <section className="panel" key={request.id}>
