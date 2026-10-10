@@ -22,7 +22,7 @@ insert into public.users(id,name,email,role,section_id) values
 insert into auth.users(id) values('00000000-0000-4000-8000-000000000097');
 insert into public.users(id,name,email,role) values
 ('00000000-0000-4000-8000-000000000097','Second admin','second-admin@test.invalid','admin');
-do $
+do $$
 declare session_uuid uuid; ledger_before bigint;
 begin
  select count(*) into ledger_before from public.occupancy_ledger;
