@@ -27,7 +27,7 @@ insert into public.users(id,name,email,role) values
 ('00000000-0000-4000-8000-000000000095','First faculty','first-faculty@test.invalid','faculty'),
 ('00000000-0000-4000-8000-000000000096','Second faculty','second-faculty@test.invalid','faculty');
 do $$
-declare session_uuid uuid; ledger_before bigint; regular_before bigint; destination uuid; chosen_start time; chosen_end time; makeup_saved uuid;
+declare session_uuid uuid; ledger_before bigint; regular_before bigint; destination uuid; chosen_start time; chosen_end time; makeup_saved uuid; club_data jsonb; reservations_before bigint;
 begin
  select count(*) into ledger_before from public.occupancy_ledger;
  select id into session_uuid from public.timetable_sessions
@@ -83,5 +83,24 @@ begin
  if (select count(*) from public.occupancy_ledger where source_kind='regular')<>regular_before then raise exception 'Regular reservations changed by makeup'; end if;
  if not exists(select 1 from public.notifications where user_id='00000000-0000-4000-8000-000000000099' and event='makeup_confirmed') then raise exception 'Rep makeup notice missing'; end if;
  if (select count(*) from public.notifications where user_id in ('00000000-0000-4000-8000-000000000095','00000000-0000-4000-8000-000000000096') and event='makeup_confirmed')<>2 then raise exception 'Faculty makeup notices missing'; end if;
+
+ -- Submit, upload, approve and cancel a club request without rebuilding the base timetable.
+ select id into destination from public.classrooms where room_number='C101';
+ club_data:=jsonb_build_object('id','00000000-0000-4000-8000-000000000088','reference','CLUB-2026-0099','club','The Eye','organizer','Varsha','department','CSE','coordinator','Prithi','event','Commitcon','purpose','Student technical workshop','date','2026-10-15','start',chosen_start,'end',chosen_end,'participants',40,'resources',jsonb_build_object('projector',0),'roomId',destination,'status','awaiting_hod_signature');
+ select count(*) into reservations_before from public.occupancy_ledger;
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000002',(select revision from public.campus_revision where id=1),jsonb_build_object('type','book','bookings',jsonb_build_array(club_data)));
+ if not exists(select 1 from public.club_bookings where id='00000000-0000-4000-8000-000000000088') then raise exception 'Club request not saved'; end if;
+ if (select count(*) from public.occupancy_ledger)<>reservations_before then raise exception 'Pending club request changed occupancy'; end if;
+ club_data:=club_data||jsonb_build_object('status','signed_letter_submitted');
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000002',(select revision from public.campus_revision where id=1),jsonb_build_object('type','booking','bookings',jsonb_build_array(club_data),'upload',jsonb_build_object('bookingId','00000000-0000-4000-8000-000000000088','path','test/private-letter.pdf','name','letter.pdf')));
+ if not exists(select 1 from public.club_bookings where id='00000000-0000-4000-8000-000000000088' and signed_letter_path='test/private-letter.pdf') then raise exception 'Signed letter not linked'; end if;
+ if (select count(*) from public.occupancy_ledger)<>reservations_before then raise exception 'Letter upload changed occupancy'; end if;
+ club_data:=club_data||jsonb_build_object('status','approved','note','Signed letter checked');
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000001',(select revision from public.campus_revision where id=1),jsonb_build_object('type','booking','bookings',jsonb_build_array(club_data)));
+ if not exists(select 1 from public.occupancy_ledger where source_kind='club' and source_id='00000000-0000-4000-8000-000000000088' and classroom_id=destination) then raise exception 'Approved club reservation missing'; end if;
+ if (select count(*) from public.occupancy_ledger where source_kind='regular')<>regular_before then raise exception 'Club approval changed base occupancy'; end if;
+ club_data:=club_data||jsonb_build_object('status','cancelled','note','Event cancelled');
+ perform public.campus_commit_change('00000000-0000-4000-8000-000000000001',(select revision from public.campus_revision where id=1),jsonb_build_object('type','booking','bookings',jsonb_build_array(club_data)));
+ if exists(select 1 from public.occupancy_ledger where source_kind='club' and source_id='00000000-0000-4000-8000-000000000088') then raise exception 'Cancelled club reservation remains'; end if;
 end$$;
 rollback;

@@ -147,6 +147,15 @@ begin
  elsif operation = 'makeup' then
   -- The makeup and its occupancy were inserted atomically above.
   null;
+ elsif operation in ('book','booking') then
+  -- Pending requests and letter uploads do not reserve a room.
+  -- Approval/cancellation touches only the affected club reservation.
+  for row_data in select value from jsonb_array_elements(coalesce(change->'bookings','[]')) loop
+   delete from public.occupancy_ledger where source_kind='club' and source_id=(row_data->>'id')::uuid;
+   insert into public.occupancy_ledger(source_kind,source_id,classroom_id,event_date,starts_at,ends_at)
+   select 'club',b.id,b.classroom_id,b.event_date,b.event_date+b.start_time,b.event_date+b.end_time
+    from public.club_bookings b where b.id=(row_data->>'id')::uuid and b.status='approved';
+  end loop;
  elsif operation <> 'report' then
  delete from public.occupancy_ledger;
  insert into public.occupancy_ledger(source_kind,source_id,classroom_id,faculty_id,section_id,event_date,starts_at,ends_at)
