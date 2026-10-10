@@ -18,7 +18,7 @@ export async function setupPost(request:Request){
  try{
   sameOrigin(request);
   if(demoMode())throw new AppError(403,"Use your real admin login.");
-  const actor=await requireRole(["admin"]);
+  await requireRole(["admin"]);
   const raw=await request.text();if(raw.length>1024)throw new AppError(413,"Invalid setup input.");
   const input=z.object({offset:z.number().int().min(0).max(plan.accounts.length),password:z.string().min(16).max(128)}).strict().parse(JSON.parse(raw));
   const db=supabase(true);
